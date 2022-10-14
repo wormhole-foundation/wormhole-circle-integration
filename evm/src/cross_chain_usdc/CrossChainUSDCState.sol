@@ -24,6 +24,9 @@ contract CrossChainUSDCStorage {
         // address of the trusted Circle Bridge contract on this chain
         address circleBridgeAddress;
 
+        // address of the trusted Circle Message Transmitter on this chain
+        address circleTransmitterAddress;
+
         // mapping of initialized implementations
         mapping(address => bool) initializedImplementations;
 

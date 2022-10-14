@@ -60,11 +60,9 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         );
 
         // encode depositForBurn message
-        bytes memory encodedMessage = encodeDepositForBurnMessage(
-            DepositForBurn({
+        bytes memory encodedMessage = encodeWormholeDepositForBurnMessage(
+            WormholeDepositForBurn({
                 payloadId: uint8(1),
-                token: addressToBytes32(token),
-                amount: amount,
                 sourceDomain: getChainDomain(chainId()),
                 targetDomain: targetChainDomain,
                 nonce: nonce,
@@ -79,6 +77,49 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
             encodedMessage,
             wormholeFinality()
         );
+    }
+
+    function redeemTokens(
+        bytes memory encodedWormholeMessage,
+        bytes memory circleBridgeMessage,
+        bytes calldata circleAttestation
+    ) public {
+        // parse and verify the Wormhole core message
+        (
+            IWormhole.VM memory verifiedMessage,
+            bool valid,
+            string memory reason
+        ) = wormhole().parseAndVerifyVM(encodedWormholeMessage);
+
+        // confirm that the core layer verified the message
+        require(valid, reason);
+
+        // verify that this message was emitted by a trusted contract
+        require(verifyEmitter(verifiedMessage), "unknown emitter");
+
+         // revert if this message has been consumed already
+        require(!isMessageConsumed(verifiedMessage.hash), "message already consumed");
+        consumeMessage(verifiedMessage.hash);
+
+        // decode the message payload into the DepositForBurn struct
+        WormholeDepositForBurn memory wormholePayload = decodeWormholeDepositForBurnMessage(
+            verifiedMessage.payload
+        );
+
+        // parse the circle bridge message
+        CircleDepositForBurn memory circlePayload = decodeCircleDepositForBurnMessage(
+            circleBridgeMessage
+        );
+
+        // confirm that the caller passed the correct message pair
+        require(verifyCircleMessage(wormholePayload, circlePayload), "invalid message pair");
+
+        // call the circle bridge to mint tokens to the recipient
+        bool success = circleTransmitter().receiveMessage(
+            circleBridgeMessage,
+            circleAttestation
+        );
+        require(success, "failed to mint USDC");
     }
 
     function _custodyTokens(address token, uint256 amount) internal {
@@ -114,11 +155,20 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
 
     function verifyEmitter(IWormhole.VM memory vm) internal view returns (bool) {
         // verify that the sender of the wormhole message is a trusted
-        if (getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress) {
-            return true;
-        }
+        return (getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress);
+    }
 
-        return false;
+    function verifyCircleMessage(
+        WormholeDepositForBurn memory wormhole,
+        CircleDepositForBurn memory circle
+    ) internal pure returns (bool) {
+        return (
+            wormhole.sourceDomain == circle.sourceDomain &&
+            wormhole.targetDomain == circle.targetDomain &&
+            wormhole.nonce == circle.nonce &&
+            wormhole.sender == circle.sender &&
+            wormhole.mintRecipient == circle.mintRecipient
+        );
     }
 
     function addressToBytes32(address address_) public pure returns (bytes32) {

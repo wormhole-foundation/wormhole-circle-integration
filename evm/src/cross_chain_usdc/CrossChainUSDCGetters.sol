@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
+import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
 
 import "./CrossChainUSDCSetters.sol";
 
@@ -33,6 +34,10 @@ contract CrossChainUSDCGetters is CrossChainUSDCSetters {
 
     function circleBridge() public view returns (ICircleBridge) {
         return ICircleBridge(_state.circleBridgeAddress);
+    }
+
+    function circleTransmitter() public view returns (IMessageTransmitter) {
+        return IMessageTransmitter(_state.circleTransmitterAddress);
     }
 
     function getRegisteredEmitter(uint16 emitterChainId) public view returns (bytes32) {

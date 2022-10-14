@@ -32,6 +32,10 @@ contract CrossChainUSDCSetters is CrossChainUSDCState {
         _state.circleBridgeAddress = circleBridgeAddress_;
     }
 
+    function setCircleTransmitter(address circleTransmitterAddress_) internal {
+        _state.circleTransmitterAddress = circleTransmitterAddress_;
+    }
+
     function setEmitter(uint16 chainId_, bytes32 emitter) internal {
         _state.registeredEmitters[chainId_] = emitter;
     }
