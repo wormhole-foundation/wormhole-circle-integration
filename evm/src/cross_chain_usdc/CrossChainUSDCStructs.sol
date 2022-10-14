@@ -2,6 +2,12 @@
 pragma solidity ^0.8.13;
 
 contract CrossChainUSDCStructs {
+    struct RedeemParameters {
+        bytes encodedWormholeMessage;
+        bytes circleBridgeMessage;
+        bytes circleAttestation;
+    }
+
     struct WormholeDepositForBurn {
         uint8 payloadId; // == 1
         uint32 sourceDomain;

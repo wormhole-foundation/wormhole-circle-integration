@@ -79,17 +79,13 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         );
     }
 
-    function redeemTokens(
-        bytes memory encodedWormholeMessage,
-        bytes memory circleBridgeMessage,
-        bytes calldata circleAttestation
-    ) public {
+    function redeemTokens(RedeemParameters memory params) public {
         // parse and verify the Wormhole core message
         (
             IWormhole.VM memory verifiedMessage,
             bool valid,
             string memory reason
-        ) = wormhole().parseAndVerifyVM(encodedWormholeMessage);
+        ) = wormhole().parseAndVerifyVM(params.encodedWormholeMessage);
 
         // confirm that the core layer verified the message
         require(valid, reason);
@@ -108,7 +104,7 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
 
         // parse the circle bridge message
         CircleDepositForBurn memory circlePayload = decodeCircleDepositForBurnMessage(
-            circleBridgeMessage
+            params.circleBridgeMessage
         );
 
         // confirm that the caller passed the correct message pair
@@ -116,8 +112,8 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
 
         // call the circle bridge to mint tokens to the recipient
         bool success = circleTransmitter().receiveMessage(
-            circleBridgeMessage,
-            circleAttestation
+            params.circleBridgeMessage,
+            params.circleAttestation
         );
         require(success, "failed to mint USDC");
     }
