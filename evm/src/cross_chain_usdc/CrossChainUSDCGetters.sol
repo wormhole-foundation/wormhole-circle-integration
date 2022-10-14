@@ -1,13 +1,22 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.13;
 
 import {IWormhole} from "../interfaces/IWormhole.sol";
+import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 
-import "./HelloWorldSetters.sol";
+import "./CrossChainUSDCSetters.sol";
 
-contract HelloWorldGetters is HelloWorldSetters {
+contract CrossChainUSDCGetters is CrossChainUSDCSetters {
     function owner() public view returns (address) {
         return _state.owner;
+    }
+
+    function pendingOwner() public view returns (address) {
+        return _state.pendingOwner;
+    }
+
+    function isInitialized(address impl) public view returns (bool) {
+        return _state.initializedImplementations[impl];
     }
 
     function wormhole() public view returns (IWormhole) {
@@ -22,12 +31,16 @@ contract HelloWorldGetters is HelloWorldSetters {
         return _state.wormholeFinality;
     }
 
+    function circleBridge() public view returns (ICircleBridge) {
+        return ICircleBridge(_state.circleBridgeAddress);
+    }
+
     function getRegisteredEmitter(uint16 emitterChainId) public view returns (bytes32) {
         return _state.registeredEmitters[emitterChainId];
     }
 
-    function getReceivedMessage(bytes32 hash) public view returns (string memory) {
-        return _state.receivedMessages[hash];
+    function getChainDomain(uint16 chainId_) public view returns (uint32) {
+        return _state.chainDomains[chainId_];
     }
 
     function isMessageConsumed(bytes32 hash) public view returns (bool) {
