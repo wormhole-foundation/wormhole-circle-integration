@@ -18,16 +18,16 @@ sleep 2
 RPC="http://localhost:8545"
 
 ## first key from mnemonic above
-PRIVATE_KEY="0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+export PRIVATE_KEY="0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+
+export RELEASE_WORMHOLE_ADDRESS=$TESTING_WORMHOLE_ADDRESS
+export RELEASE_CIRCLE_BRIDGE_ADDRESS=$TESTING_CIRCLE_BRIDGE_ADDRESS
 
 echo "deploy contracts"
-forge script forge-scripts/deploy_contracts.sol \
-    --rpc-url $RPC \
-    --private-key $PRIVATE_KEY \
-    --broadcast --slow > forge-scripts/deploy.out 2>&1
+bash $(dirname $0)/deploy_usdc_shuttle.sh $RPC > deploy.out 2>&1
 
 ## run tests here
-npx ts-mocha -t 1000000 ts-test/*.ts
+#npx ts-mocha -t 1000000 ts-test/*.ts
 
 # nuke
 pkill anvil
