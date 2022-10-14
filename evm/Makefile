@@ -1,4 +1,4 @@
-include testing.env
+include env/testing.env
 
 .PHONY: dependencies unit-test forge-test integration-test clean all
 

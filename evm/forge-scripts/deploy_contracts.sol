@@ -6,6 +6,7 @@ import "forge-std/Script.sol";
 
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
 import {ICircleBridge} from "../src/interfaces/circle/ICircleBridge.sol";
+import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.sol";
 
 import {CrossChainUSDCSetup} from "../src/cross_chain_usdc/CrossChainUSDCSetup.sol";
 import {CrossChainUSDCImplementation} from "../src/cross_chain_usdc/CrossChainUSDCImplementation.sol";
@@ -16,6 +17,7 @@ import "forge-std/console.sol";
 contract ContractScript is Script {
     IWormhole wormhole;
     ICircleBridge circleBridge;
+    IMessageTransmitter messageTransmitter;
 
     // USDCShuttle
     CrossChainUSDCSetup setup;
@@ -25,6 +27,7 @@ contract ContractScript is Script {
     function setUp() public {
         wormhole = IWormhole(vm.envAddress("RELEASE_WORMHOLE_ADDRESS"));
         circleBridge = ICircleBridge(vm.envAddress("RELEASE_CIRCLE_BRIDGE_ADDRESS"));
+        messageTransmitter = IMessageTransmitter(vm.envAddress("RELEASE_MESSAGE_TRANSMITTER_ADDRESS"));
     }
 
     function deployUSDCShuttle() public {
@@ -35,20 +38,16 @@ contract ContractScript is Script {
         implementation = new CrossChainUSDCImplementation();
 
         // setup Proxy using Implementation
-        //         address implementation,
-        // uint16 chainId,
-        // address wormhole,
-        // uint8 finality,
-        // address circleBridgeAddress
         proxy = new CrossChainUSDCProxy(
             address(setup),
             abi.encodeWithSelector(
-                bytes4(keccak256("setup(address,uint16,address,uint8,address)")),
+                bytes4(keccak256("setup(address,uint16,address,uint8,address,address)")),
                 address(implementation),
                 wormhole.chainId(),
                 address(wormhole),
                 uint8(1), // finality
-                address(circleBridge)
+                address(circleBridge),
+                address(messageTransmitter)
             )
         );
     }
