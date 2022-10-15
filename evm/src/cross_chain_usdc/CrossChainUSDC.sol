@@ -119,14 +119,14 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
     }
 
     function _custodyTokens(address token, uint256 amount) internal {
-        /// query own token balance before transfer
+        // query own token balance before transfer
         (,bytes memory queriedBalanceBefore) = token.staticcall(
             abi.encodeWithSelector(IERC20.balanceOf.selector,
             address(this))
         );
         uint256 balanceBefore = abi.decode(queriedBalanceBefore, (uint256));
 
-        /// deposit USDC/EUROC
+        // deposit USDC/EUROC
         SafeERC20.safeTransferFrom(
             IERC20(token),
             msg.sender,
@@ -134,7 +134,7 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
             amount
         );
 
-        /// query own token balance after transfer
+        // query own token balance after transfer
         (,bytes memory queriedBalanceAfter) = token.staticcall(
             abi.encodeWithSelector(IERC20.balanceOf.selector,
             address(this))
