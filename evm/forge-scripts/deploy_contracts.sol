@@ -19,7 +19,7 @@ contract ContractScript is Script {
     ICircleBridge circleBridge;
     IMessageTransmitter messageTransmitter;
 
-    // USDCShuttle
+    // USDC Burn/Mint contracts
     CrossChainUSDCSetup setup;
     CrossChainUSDCImplementation implementation;
     CrossChainUSDCProxy proxy;
@@ -30,7 +30,7 @@ contract ContractScript is Script {
         messageTransmitter = IMessageTransmitter(vm.envAddress("RELEASE_MESSAGE_TRANSMITTER_ADDRESS"));
     }
 
-    function deployUSDCShuttle() public {
+    function deployUSDCIntegration() public {
         // first Setup
         setup = new CrossChainUSDCSetup();
 
@@ -57,7 +57,7 @@ contract ContractScript is Script {
         vm.startBroadcast();
 
         // HelloWorld.sol
-        deployUSDCShuttle();
+        deployUSDCIntegration();
 
         // finished
         vm.stopBroadcast();

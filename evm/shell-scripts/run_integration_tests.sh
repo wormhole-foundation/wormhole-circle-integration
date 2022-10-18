@@ -25,7 +25,7 @@ export RELEASE_CIRCLE_BRIDGE_ADDRESS=$TESTING_CIRCLE_BRIDGE_ADDRESS
 export RELEASE_MESSAGE_TRANSMITTER_ADDRESS=$TESTING_MESSAGE_TRANSMITTER_ADDRESS
 
 echo "deploy contracts"
-bash $(dirname $0)/deploy_usdc_shuttle.sh > deploy.out 2>&1
+bash $(dirname $0)/deploy_usdc_integration.sh > deploy.out 2>&1
 
 ## run tests here
 #npx ts-mocha -t 1000000 ts-test/*.ts

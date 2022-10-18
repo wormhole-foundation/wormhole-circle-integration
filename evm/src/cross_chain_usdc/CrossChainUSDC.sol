@@ -28,7 +28,7 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         // message fee.
         require(msg.value == wormholeFee, "insufficient value");
 
-        // call the circle bridge and depositForBurn
+        // call the Circle Bridge and depositForBurn
         uint64 nonce = _transferTokens(token, amount, targetChain, mintRecipient);
 
         // encode depositForBurn message
@@ -68,10 +68,10 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         require(msg.value == wormholeFee, "insufficient value");
 
         // Call the circle bridge and depositForBurn. The mintRecipient
-        // should be the target contract composing on USDC shuttle.
+        // should be the target contract composing on this USDC integration.
         uint64 nonce = _transferTokens(token, amount, targetChain, mintRecipient);
 
-        // mintToBurn deposit message header
+        // depositForBurn deposit message header
         WormholeDeposit memory depositHeader = WormholeDeposit({
             payloadId: uint8(2),
             token: addressToBytes32(token),
@@ -163,7 +163,7 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         // for the USDC Bridge.
         require(
             amount == balanceAfter - balanceBefore,
-            "USDC doesn't charge fees :/"
+            "fee-on-transfer tokens not permitted"
         );
     }
 
@@ -227,9 +227,6 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
             params.circleAttestation
         );
         require(success, "failed to mint USDC");
-
-        // return the additional payload
-
     }
 
     function verifyWormholeRedeemMessage(

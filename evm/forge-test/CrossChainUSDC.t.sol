@@ -31,7 +31,7 @@ contract CrossChainUSDCTest is Test {
     ICircleBridge circleBridge;
     IMessageTransmitter messageTransmitter;
 
-    // USDCShuttle
+    // USDC Mint/Burn contracts
     CrossChainUSDCSetup setup;
     CrossChainUSDCImplementation implementation;
     CrossChainUSDCProxy proxy;
@@ -86,18 +86,5 @@ contract CrossChainUSDCTest is Test {
         // verify the test contract has $1000 USDC
         uint256 balance = usdc.balanceOf(address(this));
         assertEq(balance, 1000e6);
-    }
-
-    function testTransferTokens() public {
-        uint256 amount = 10e6;
-
-        // safe approve the contract to spend tokens
-        /*SafeERC20.safeApprove(
-            IERC20(address(usdc)),
-            address(this),
-            amount
-        );
-
-        this.transferTokens(address(usdc), amount, 6, addressToBytes32(address(this)));*/
     }
 }
