@@ -11,9 +11,14 @@ import {IWormhole} from "../interfaces/IWormhole.sol";
 import "./CrossChainUSDCGovernance.sol";
 import "./CrossChainUSDCMessages.sol";
 
+/// @notice These contracts burn and mint USDC by using Circle's Cross-Chain Transfer Protocol allowing
+/// for seemless cross-chain USDC transfers. They also emit Wormhole messages that contain instructions
+/// describing what to do with the USDC on the target chain.
 contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, ReentrancyGuard {
     using BytesLib for bytes;
 
+    /// @dev `transferTokens` calls the Circle Bridge contract to burn USDC, and emits
+    /// a Wormhole message with information about the cross-chain trasnfer.
     function transferTokens(
         address token,
         uint256 amount,
@@ -52,6 +57,9 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         );
     }
 
+    /// @dev `transferTokensWithPayload` calls the Circle Bridge contract to burn USDC. It emits
+    /// a Wormhole message containing a user-specified payload with instructions for what to do with
+    /// the USDC once it has been minted on the target chain.
     function transferTokensWithPayload(
         address token,
         uint256 amount,
@@ -167,6 +175,10 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         );
     }
 
+    /// @dev `custodyTokens` verifies the Wormhole message from the source chain and
+    /// verifies that the passed Circle Bridge message is valid. It calls the Circle Bridge
+    /// contract by passing the Circle message and attestation to mint tokens to
+    /// the specified mint recipient.
     function redeemTokens(RedeemParameters memory params) public {
         // verify the wormhole message
         IWormhole.VM memory verifiedMessage = verifyWormholeRedeemMessage(
@@ -194,6 +206,11 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         require(success, "failed to mint USDC");
     }
 
+    /// @dev `custodyTokensWithPayload` verifies the Wormhole message from the source chain and
+    /// verifies that the passed Circle Bridge message is valid. It calls the Circle Bridge
+    /// contract by passing the Circle message and attestation to mint tokens to
+    /// the specified mint recipient. It also verifies that the caller is the specified mint
+    /// recipient to ensure atomic execution of the additional instructions in the Wormhole message.
     function redeemTokensWithPayload(
         RedeemParameters memory params
     ) public returns (WormholeDepositWithPayload memory wormholeDepositWithPayload) {
