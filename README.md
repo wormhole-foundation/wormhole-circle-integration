@@ -29,6 +29,13 @@ cd evm
 . env/avax-fuji-testnet.env && PRIVATE_KEY=put_your_private_key_here bash shell-scripts/deploy_usdc_integration.sh
 ```
 
+### Deployed Contract Addresses
+
+```
+goerli: 0xdbedb4ebd098e9f1777af9f8088e794d381309d1
+fuji: 0x3e6a4543165aaecbf7ffc81e54a1c7939cb12cb8
+```
+
 ### Structs
 
 ```
