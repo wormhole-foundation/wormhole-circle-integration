@@ -18,7 +18,7 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
     using BytesLib for bytes;
 
     /// @dev `transferTokens` calls the Circle Bridge contract to burn USDC, and emits
-    /// a Wormhole message with information about the cross-chain trasnfer.
+    /// a Wormhole message with information about the cross-chain transfer.
     function transferTokens(
         address token,
         uint256 amount,
@@ -152,7 +152,7 @@ contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, Ree
         );
         uint256 balanceBefore = abi.decode(queriedBalanceBefore, (uint256));
 
-        // deposit USDC/EUROC
+        // deposit USDC
         SafeERC20.safeTransferFrom(
             IERC20(token),
             msg.sender,
