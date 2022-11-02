@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.13;
 
-import "./CircleIntegrationState.sol";
+import {CircleIntegrationState} from "./CircleIntegrationState.sol";
 
 contract CircleIntegrationSetters is CircleIntegrationState {
     function setOwner(address owner_) internal {
         _state.owner = owner_;
-    }
-
-    function setPendingOwner(address pendingOwner_) internal {
-        _state.pendingOwner = pendingOwner_;
     }
 
     function setInitialized(address implementatiom) internal {
@@ -44,7 +40,7 @@ contract CircleIntegrationSetters is CircleIntegrationState {
         _state.acceptedTokens[token] = true;
     }
 
-    function addTargetAcceptedToken(address sourceToken, uint16 chainId, address targetToken) internal {
+    function addTargetAcceptedToken(address sourceToken, uint16 chainId, bytes32 targetToken) internal {
         _state.targetAcceptedTokens[sourceToken][chainId] = targetToken;
     }
 
@@ -58,5 +54,14 @@ contract CircleIntegrationSetters is CircleIntegrationState {
 
     function consumeMessage(bytes32 hash) internal {
         _state.consumedMessages[hash] = true;
+    }
+
+    function setLocalDomain(uint32 domain) internal {
+        _state.localDomain = domain;
+    }
+
+    function setGovernance(uint16 governanceChainId, bytes32 governanceContract) internal {
+        _state.governanceChainId = governanceChainId;
+        _state.governanceContract = governanceContract;
     }
 }

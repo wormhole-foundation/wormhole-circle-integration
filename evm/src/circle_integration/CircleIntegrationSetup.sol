@@ -1,32 +1,37 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
+import {ERC1967Upgrade} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
+import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
+import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
 
-import "./CircleIntegrationSetters.sol";
+import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
 
 contract CircleIntegrationSetup is CircleIntegrationSetters, ERC1967Upgrade, Context {
     function setup(
         address implementation,
-        uint16 chainId,
-        address wormhole,
+        address wormholeAddress,
         uint8 finality,
         address circleBridgeAddress,
-        address circleTransmitterAddress
+        uint16 governanceChainId,
+        bytes32 governanceContract
     ) public {
         require(implementation != address(0), "invalid implementation");
-        require(chainId > 0, "invalid chainId");
-        require(wormhole != address(0), "invalid wormhole address");
+        require(wormholeAddress != address(0), "invalid wormhole address");
         require(circleBridgeAddress != address(0), "invalid circle bridge address");
-        require(circleTransmitterAddress != address(0), "invalid circle transmitter address");
 
         setOwner(_msgSender());
-        setChainId(chainId);
-        setWormhole(wormhole);
+        setWormhole(wormholeAddress);
+        setChainId(IWormhole(wormholeAddress).chainId());
         setWormholeFinality(finality);
         setCircleBridge(circleBridgeAddress);
-        setCircleTransmitter(circleTransmitterAddress);
+        setGovernance(governanceChainId, governanceContract);
+
+        IMessageTransmitter messageTransmitter = ICircleBridge(circleBridgeAddress).localMessageTransmitter();
+        setCircleTransmitter(address(messageTransmitter));
+        setLocalDomain(messageTransmitter.localDomain());
 
         // set the implementation
         _upgradeTo(implementation);

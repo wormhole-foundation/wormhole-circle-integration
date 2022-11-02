@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../libraries/BytesLib.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
+import {BytesLib} from "wormhole/libraries/external/BytesLib.sol";
 
-import {IWormhole} from "../interfaces/IWormhole.sol";
+import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 
-import "./CircleIntegrationGovernance.sol";
-import "./CircleIntegrationMessages.sol";
+import {CircleIntegrationGovernance} from "./CircleIntegrationGovernance.sol";
+import {CircleIntegrationMessages} from "./CircleIntegrationMessages.sol";
 
 /// @notice These contracts burn and mint USDC by using Circle's Cross-Chain Transfer Protocol allowing
 /// for seemless cross-chain USDC transfers. They also emit Wormhole messages that contain instructions
@@ -20,14 +21,12 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     /// @dev `transferTokensWithPayload` calls the Circle Bridge contract to burn USDC. It emits
     /// a Wormhole message containing a user-specified payload with instructions for what to do with
     /// the USDC once it has been minted on the target chain.
-    function transferTokensWithPayload(
-        TransferParameters memory transferParams,
-        uint32 batchId,
-        bytes memory payload
-    ) public payable nonReentrant returns (uint64 messageSequence) {
-        // confirm that the token is accepted by the Circle Bridge
-        require(isAcceptedToken(transferParams.token), "token not accepted");
-
+    function transferTokensWithPayload(TransferParameters memory transferParams, uint32 batchId, bytes memory payload)
+        public
+        payable
+        nonReentrant
+        returns (uint64 messageSequence)
+    {
         // cache wormhole instance and fees to save on gas
         IWormhole wormhole = wormhole();
         uint256 wormholeFee = wormhole.messageFee();
@@ -38,20 +37,16 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
 
         // Call the circle bridge and depositForBurn. The mintRecipient
         // should be the target contract composing on this USDC integration.
-        (uint64 nonce, uint256 amountReceived) = _transferTokens(
-            transferParams.token,
-            transferParams.amount,
-            transferParams.targetChain,
-            transferParams.mintRecipient
+        (bytes32 targetToken, uint64 nonce, uint256 amountReceived) = _transferTokens(
+            transferParams.token, transferParams.amount, transferParams.targetChain, transferParams.mintRecipient
         );
 
         // encode depositForBurn message
-        bytes memory encodedMessage = encodeWormholeDepositWithPayload(
-            WormholeDepositWithPayload({
-                payloadId: uint8(1),
-                token: addressToBytes32(targetAcceptedToken(transferParams.token, transferParams.targetChain)),
+        bytes memory encodedMessage = encodeDepositWithPayload(
+            DepositWithPayload({
+                token: targetToken,
                 amount: amountReceived,
-                sourceDomain: getDomainFromChainId(chainId()),
+                sourceDomain: localDomain(),
                 targetDomain: getDomainFromChainId(transferParams.targetChain),
                 nonce: nonce,
                 fromAddress: addressToBytes32(msg.sender),
@@ -61,23 +56,21 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         );
 
         // send the DepositForBurn wormhole message
-        messageSequence = wormhole.publishMessage{value : wormholeFee}(
-            batchId,
-            encodedMessage,
-            wormholeFinality()
-        );
+        messageSequence = wormhole.publishMessage{value: wormholeFee}(batchId, encodedMessage, wormholeFinality());
     }
 
-    function _transferTokens(
-        address token,
-        uint256 amount,
-        uint16 targetChain,
-        bytes32 mintRecipient
-    ) internal returns (uint64 nonce, uint256 amountReceived) {
+    function _transferTokens(address token, uint256 amount, uint16 targetChain, bytes32 mintRecipient)
+        internal
+        returns (bytes32 targetToken, uint64 nonce, uint256 amountReceived)
+    {
         // sanity check user input
         require(amount > 0, "amount must be > 0");
-        require(targetChain > 0, "invalid to chainId");
         require(mintRecipient != bytes32(0), "invalid mint recipient");
+        require(isAcceptedToken(token), "token not accepted");
+        require(getRegisteredEmitter(targetChain) != bytes32(0), "target contract not registered");
+
+        targetToken = targetAcceptedToken(token, targetChain);
+        require(targetToken != bytes32(0), "target token not registered");
 
         // take custody of tokens
         amountReceived = custodyTokens(token, amount);
@@ -86,49 +79,26 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         ICircleBridge circleBridge = circleBridge();
 
         // approve the USDC Bridge to spend tokens
-        SafeERC20.safeApprove(
-            IERC20(token),
-            address(circleBridge),
-            amountReceived
-        );
-
-        // confirm that the target contract is registered
-        require(
-            getRegisteredEmitter(targetChain) != bytes32(0),
-            "target contract not registered"
-        );
+        SafeERC20.safeApprove(IERC20(token), address(circleBridge), amountReceived);
 
         // burn USDC on the bridge
         nonce = circleBridge.depositForBurnWithCaller(
-            amountReceived,
-            getDomainFromChainId(targetChain),
-            mintRecipient,
-            token,
-            getRegisteredEmitter(targetChain)
+            amountReceived, getDomainFromChainId(targetChain), mintRecipient, token, getRegisteredEmitter(targetChain)
         );
     }
 
     function custodyTokens(address token, uint256 amount) internal returns (uint256) {
         // query own token balance before transfer
-        (,bytes memory queriedBalanceBefore) = token.staticcall(
-            abi.encodeWithSelector(IERC20.balanceOf.selector,
-            address(this))
-        );
+        (, bytes memory queriedBalanceBefore) =
+            token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         uint256 balanceBefore = abi.decode(queriedBalanceBefore, (uint256));
 
         // deposit USDC
-        SafeERC20.safeTransferFrom(
-            IERC20(token),
-            msg.sender,
-            address(this),
-            amount
-        );
+        SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
 
         // query own token balance after transfer
-        (,bytes memory queriedBalanceAfter) = token.staticcall(
-            abi.encodeWithSelector(IERC20.balanceOf.selector,
-            address(this))
-        );
+        (, bytes memory queriedBalanceAfter) =
+            token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         uint256 balanceAfter = abi.decode(queriedBalanceAfter, (uint256));
 
         return balanceAfter - balanceBefore;
@@ -139,50 +109,36 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     /// contract by passing the Circle message and attestation to mint tokens to
     /// the specified mint recipient. It also verifies that the caller is the specified mint
     /// recipient to ensure atomic execution of the additional instructions in the Wormhole message.
-    function redeemTokensWithPayload(
-        RedeemParameters memory params
-    ) public returns (WormholeDepositWithPayload memory wormholeDepositWithPayload) {
+    function redeemTokensWithPayload(RedeemParameters memory params)
+        public
+        returns (DepositWithPayload memory depositInfo)
+    {
         // verify the wormhole message
-        IWormhole.VM memory verifiedMessage = verifyWormholeRedeemMessage(
-            params.encodedWormholeMessage
-        );
+        IWormhole.VM memory verifiedMessage = verifyWormholeRedeemMessage(params.encodedWormholeMessage);
 
         // decode the message payload into the WormholeDeposit struct
-        wormholeDepositWithPayload = decodeWormholeDepositWithPayload(
-            verifiedMessage.payload
-        );
+        depositInfo = decodeDepositWithPayload(verifiedMessage.payload);
 
         // confirm that the caller is the mint recipient to ensure atomic execution
-        require(
-            addressToBytes32(msg.sender) == wormholeDepositWithPayload.mintRecipient,
-            "caller must be mintRecipient"
-        );
-
-        // parse the circle bridge message
-        CircleDeposit memory circleDeposit = decodeCircleDeposit(
-            params.circleBridgeMessage
-        );
+        require(addressToBytes32(msg.sender) == depositInfo.mintRecipient, "caller must be mintRecipient");
 
         // confirm that the caller passed the correct message pair
-        require(verifyCircleMessage(wormholeDepositWithPayload, circleDeposit), "invalid message pair");
+        require(
+            verifyCircleMessage(
+                params.circleMessage, depositInfo.sourceDomain, depositInfo.targetDomain, depositInfo.nonce
+            ),
+            "invalid message pair"
+        );
 
         // call the circle bridge to mint tokens to the recipient
-        bool success = circleTransmitter().receiveMessage(
-            params.circleBridgeMessage,
-            params.circleAttestation
-        );
+        bool success = circleTransmitter().receiveMessage(params.circleMessage, params.circleAttestation);
         require(success, "failed to mint USDC");
     }
 
-    function verifyWormholeRedeemMessage(
-        bytes memory encodedMessage
-    ) internal returns (IWormhole.VM memory) {
+    function verifyWormholeRedeemMessage(bytes memory encodedMessage) internal returns (IWormhole.VM memory) {
         // parse and verify the Wormhole core message
-        (
-            IWormhole.VM memory verifiedMessage,
-            bool valid,
-            string memory reason
-        ) = wormhole().parseAndVerifyVM(encodedMessage);
+        (IWormhole.VM memory verifiedMessage, bool valid, string memory reason) =
+            wormhole().parseAndVerifyVM(encodedMessage);
 
         // confirm that the core layer verified the message
         require(valid, reason);
@@ -190,7 +146,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // verify that this message was emitted by a trusted contract
         require(verifyEmitter(verifiedMessage), "unknown emitter");
 
-         // revert if this message has been consumed already
+        // revert if this message has been consumed already
         require(!isMessageConsumed(verifiedMessage.hash), "message already consumed");
         consumeMessage(verifiedMessage.hash);
 
@@ -202,15 +158,17 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         return (getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress);
     }
 
-    function verifyCircleMessage(
-        WormholeDepositWithPayload memory wormhole,
-        CircleDeposit memory circle
-    ) internal pure returns (bool) {
-        return (
-            wormhole.sourceDomain == circle.sourceDomain &&
-            wormhole.targetDomain == circle.targetDomain &&
-            wormhole.nonce == circle.nonce
-        );
+    function verifyCircleMessage(bytes memory circleMessage, uint32 sourceDomain, uint32 targetDomain, uint64 nonce)
+        internal
+        pure
+        returns (bool)
+    {
+        // parse the circle bridge message
+        uint32 circleSourceDomain = circleMessage.toUint32(4);
+        uint32 circleTargetDomain = circleMessage.toUint32(8);
+        uint64 circleNonce = circleMessage.toUint64(12);
+
+        return (sourceDomain == circleSourceDomain && targetDomain == circleTargetDomain && nonce == circleNonce);
     }
 
     function addressToBytes32(address address_) public pure returns (bytes32) {

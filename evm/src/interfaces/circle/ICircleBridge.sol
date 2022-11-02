@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import {IMessageTransmitter} from "./IMessageTransmitter.sol";
+
 interface ICircleBridge {
     event MessageSent(bytes message);
 
@@ -53,4 +55,18 @@ interface ICircleBridge {
         address _burnToken,
         bytes32 _destinationCaller
     ) external returns (uint64 _nonce);
+
+    function owner() external view returns (address);
+
+    function handleReceiveMessage(uint32 _remoteDomain, bytes32 _sender, bytes memory messageBody)
+        external
+        view
+        returns (bool);
+
+    function localMessageTransmitter() external view returns (IMessageTransmitter);
+
+    function remoteCircleBridges(uint32 domain) external view returns (bytes32);
+
+    // owner only methods
+    function transferOwnership(address newOwner) external;
 }

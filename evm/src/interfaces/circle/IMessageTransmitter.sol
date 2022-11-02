@@ -39,4 +39,38 @@ interface IMessageTransmitter {
      * @return success bool, true if successful
      */
     function receiveMessage(bytes memory _message, bytes calldata _attestation) external returns (bool success);
+
+    function attesterManager() external view returns (address);
+
+    function availableNonces(uint32 domain) external view returns (uint64);
+
+    function getNumEnabledAttesters() external view returns (uint256);
+
+    function isEnabledAttester(address _attester) external view returns (bool);
+
+    function localDomain() external view returns (uint32);
+
+    function maxMessageBodySize() external view returns (uint256);
+
+    function owner() external view returns (address);
+
+    function paused() external view returns (bool);
+
+    function pauser() external view returns (address);
+
+    function rescuer() external view returns (address);
+
+    function version() external view returns (uint32);
+
+    // owner only methods
+    function transferOwnership(address newOwner) external;
+
+    function updateAttesterManager(address _newAttesterManager) external;
+
+    // attester manager only methods
+    function getEnabledAttester(uint256 _index) external view returns (address);
+
+    function disableAttester(address _attester) external;
+
+    function enableAttester(address _attester) external;
 }
