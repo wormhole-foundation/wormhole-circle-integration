@@ -5,9 +5,9 @@ import {IWormhole} from "../interfaces/IWormhole.sol";
 import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
 
-import "./CrossChainUSDCSetters.sol";
+import "./CircleIntegrationSetters.sol";
 
-contract CrossChainUSDCGetters is CrossChainUSDCSetters {
+contract CircleIntegrationGetters is CircleIntegrationSetters {
     function owner() public view returns (address) {
         return _state.owner;
     }

@@ -10,7 +10,7 @@ import {
   getSignedVAAWithRetry,
 } from "@certusone/wormhole-sdk";
 import {NodeHttpTransport} from "@improbable-eng/grpc-web-node-http-transport";
-import {abi as USDC_INTEGRATION_ABI} from "../../out/CrossChainUSDC.sol/CrossChainUSDC.json";
+import {abi as USDC_INTEGRATION_ABI} from "../../out/CircleIntegration.sol/CircleIntegration.json";
 import {abi as IERC20_ABI} from "../../out/IERC20.sol/IERC20.json";
 import {abi as WORMHOLE_ABI} from "../../out/IWormhole.sol/IWormhole.json";
 

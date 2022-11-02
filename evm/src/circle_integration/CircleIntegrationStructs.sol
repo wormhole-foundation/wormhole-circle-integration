@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.13;
 
-contract CrossChainUSDCStructs {
+contract CircleIntegrationStructs {
     struct RedeemParameters {
         bytes encodedWormholeMessage;
         bytes circleBridgeMessage;

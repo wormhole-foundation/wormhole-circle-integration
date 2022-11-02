@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {IWormhole} from "../interfaces/IWormhole.sol";
 
-contract CrossChainUSDCStorage {
+contract CircleIntegrationStorage {
     struct State {
         // Wormhole chain ID of this contract
         uint16 chainId;
@@ -47,7 +47,7 @@ contract CrossChainUSDCStorage {
     }
 }
 
-contract CrossChainUSDCState {
-    CrossChainUSDCStorage.State _state;
+contract CircleIntegrationState {
+    CircleIntegrationStorage.State _state;
 }
 

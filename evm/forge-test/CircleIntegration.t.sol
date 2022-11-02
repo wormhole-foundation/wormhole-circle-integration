@@ -12,9 +12,9 @@ import {ICircleIntegration} from "../src/interfaces/ICircleIntegration.sol";
 import {ICircleBridge} from "../src/interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.sol";
 
-import {CrossChainUSDCSetup} from "../src/cross_chain_usdc/CrossChainUSDCSetup.sol";
-import {CrossChainUSDCImplementation} from "../src/cross_chain_usdc/CrossChainUSDCImplementation.sol";
-import {CrossChainUSDCProxy} from "../src/cross_chain_usdc/CrossChainUSDCProxy.sol";
+import {CircleIntegrationSetup} from "../src/circle_integration/CircleIntegrationSetup.sol";
+import {CircleIntegrationImplementation} from "../src/circle_integration/CircleIntegrationImplementation.sol";
+import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
 
 interface IUSDC {
     function balanceOf(address account) external view returns (uint256);
@@ -23,7 +23,7 @@ interface IUSDC {
     function masterMinter() external view returns (address);
 }
 
-contract CrossChainUSDCTest is Test {
+contract CircleIntegrationTest is Test {
     // USDC
     IUSDC usdc;
 
@@ -33,9 +33,9 @@ contract CrossChainUSDCTest is Test {
     IMessageTransmitter messageTransmitter;
 
     // USDC Mint/Burn contracts
-    CrossChainUSDCSetup setup;
-    CrossChainUSDCImplementation implementation;
-    CrossChainUSDCProxy proxy;
+    CircleIntegrationSetup setup;
+    CircleIntegrationImplementation implementation;
+    CircleIntegrationProxy proxy;
     ICircleIntegration circleIntegration;
 
     function mintUSDC() public {
@@ -64,13 +64,13 @@ contract CrossChainUSDCTest is Test {
         mintUSDC();
 
         // next Implementation
-        implementation = new CrossChainUSDCImplementation();
+        implementation = new CircleIntegrationImplementation();
 
         // first Setup
-        setup = new CrossChainUSDCSetup();
+        setup = new CircleIntegrationSetup();
 
         // setup Proxy using Implementation
-        proxy = new CrossChainUSDCProxy(
+        proxy = new CircleIntegrationProxy(
             address(setup),
             abi.encodeWithSelector(
                 bytes4(keccak256("setup(address,uint16,address,uint8,address,address)")),

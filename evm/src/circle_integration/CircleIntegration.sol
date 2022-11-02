@@ -8,13 +8,13 @@ import "../libraries/BytesLib.sol";
 
 import {IWormhole} from "../interfaces/IWormhole.sol";
 
-import "./CrossChainUSDCGovernance.sol";
-import "./CrossChainUSDCMessages.sol";
+import "./CircleIntegrationGovernance.sol";
+import "./CircleIntegrationMessages.sol";
 
 /// @notice These contracts burn and mint USDC by using Circle's Cross-Chain Transfer Protocol allowing
 /// for seemless cross-chain USDC transfers. They also emit Wormhole messages that contain instructions
 /// describing what to do with the USDC on the target chain.
-contract CrossChainUSDC is CrossChainUSDCMessages, CrossChainUSDCGovernance, ReentrancyGuard {
+contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovernance, ReentrancyGuard {
     using BytesLib for bytes;
 
     /// @dev `transferTokensWithPayload` calls the Circle Bridge contract to burn USDC. It emits

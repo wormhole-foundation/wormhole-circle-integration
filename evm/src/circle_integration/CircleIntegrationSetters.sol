@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.13;
 
-import "./CrossChainUSDCState.sol";
+import "./CircleIntegrationState.sol";
 
-contract CrossChainUSDCSetters is CrossChainUSDCState {
+contract CircleIntegrationSetters is CircleIntegrationState {
     function setOwner(address owner_) internal {
         _state.owner = owner_;
     }

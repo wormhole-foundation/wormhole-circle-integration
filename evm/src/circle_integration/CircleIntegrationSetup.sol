@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
-import "./CrossChainUSDCSetters.sol";
+import "./CircleIntegrationSetters.sol";
 
-contract CrossChainUSDCSetup is CrossChainUSDCSetters, ERC1967Upgrade, Context {
+contract CircleIntegrationSetup is CircleIntegrationSetters, ERC1967Upgrade, Context {
     function setup(
         address implementation,
         uint16 chainId,

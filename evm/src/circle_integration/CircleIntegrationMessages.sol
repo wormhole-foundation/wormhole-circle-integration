@@ -3,9 +3,9 @@ pragma solidity ^0.8.13;
 
 import "../libraries/BytesLib.sol";
 
-import "./CrossChainUSDCStructs.sol";
+import "./CircleIntegrationStructs.sol";
 
-contract CrossChainUSDCMessages is CrossChainUSDCStructs {
+contract CircleIntegrationMessages is CircleIntegrationStructs {
     using BytesLib for bytes;
 
     function encodeWormholeDepositWithPayload(
