@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IWormhole} from "../src/interfaces/IWormhole.sol";
+import {ICircleIntegration} from "../src/interfaces/ICircleIntegration.sol";
 import {ICircleBridge} from "../src/interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.sol";
 
@@ -35,6 +36,7 @@ contract CrossChainUSDCTest is Test {
     CrossChainUSDCSetup setup;
     CrossChainUSDCImplementation implementation;
     CrossChainUSDCProxy proxy;
+    ICircleIntegration circleIntegration;
 
     function mintUSDC() public {
         // spoof .configureMinter() call with the master minter account
@@ -80,6 +82,8 @@ contract CrossChainUSDCTest is Test {
                 address(messageTransmitter)
             )
         );
+
+        circleIntegration = ICircleIntegration(address(proxy));
     }
 
     function testBalance() public {

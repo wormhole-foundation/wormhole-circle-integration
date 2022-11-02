@@ -44,6 +44,10 @@ contract CrossChainUSDCGetters is CrossChainUSDCSetters {
         return _state.registeredEmitters[emitterChainId];
     }
 
+    function isAcceptedToken(address token) public view returns (bool) {
+        return _state.acceptedTokens[token];
+    }
+
     function getChainDomain(uint16 chainId_) public view returns (uint32) {
         return _state.chainDomains[chainId_];
     }

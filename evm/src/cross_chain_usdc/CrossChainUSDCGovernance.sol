@@ -105,6 +105,13 @@ contract CrossChainUSDCGovernance is CrossChainUSDCGetters, ERC1967Upgrade {
         setChainDomain(chainId_, domain);
     }
 
+    /// @dev addAcceptedToken serves to determine which tokens can be burned + minted
+    /// via the Circle Bridge
+    function registerAcceptedToken(address token) public onlyOwner {
+        // update the acceptedTokens mapping
+        addAcceptedToken(token);
+    }
+
     modifier onlyOwner() {
         require(owner() == msg.sender, "caller not the owner");
         _;

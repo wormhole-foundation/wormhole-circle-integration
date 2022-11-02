@@ -8,18 +8,13 @@ contract CrossChainUSDCStructs {
         bytes circleAttestation;
     }
 
-    struct WormholeDeposit {
+    struct WormholeDepositWithPayload {
         uint8 payloadId; // == 1
         bytes32 token;
         uint256 amount;
         uint32 sourceDomain;
         uint32 targetDomain;
         uint64 nonce;
-        bytes32 circleSender; // circle bridge on this chain
-    }
-
-    struct WormholeDepositWithPayload {
-        WormholeDeposit depositHeader;
         bytes32 mintRecipient;
         bytes payload;
     }

@@ -40,6 +40,10 @@ contract CrossChainUSDCSetters is CrossChainUSDCState {
         _state.registeredEmitters[chainId_] = emitter;
     }
 
+    function addAcceptedToken(address token) internal {
+        _state.acceptedTokens[token] = true;
+    }
+
     function setChainDomain(uint16 chainId_, uint32 domain) internal {
         _state.chainDomains[chainId_] = domain;
     }

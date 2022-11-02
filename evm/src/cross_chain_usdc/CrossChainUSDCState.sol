@@ -33,6 +33,9 @@ contract CrossChainUSDCStorage {
         // Wormhole chain ID to known emitter address mapping
         mapping(uint16 => bytes32) registeredEmitters;
 
+        // Circle Bridge accepted tokens
+        mapping(address => bool) acceptedTokens;
+
         // Wormhole chain ID to USDC Chain Domain Mapping
         mapping(uint16 => uint32) chainDomains;
 
