@@ -3,11 +3,11 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 
-import "./CrossChainUSDCSetters.sol";
-import "./CrossChainUSDCGetters.sol";
-import "./CrossChainUSDCState.sol";
+import "./CircleIntegrationSetters.sol";
+import "./CircleIntegrationGetters.sol";
+import "./CircleIntegrationState.sol";
 
-contract CrossChainUSDCGovernance is CrossChainUSDCGetters, ERC1967Upgrade {
+contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade {
     event ContractUpgraded(address indexed oldContract, address indexed newContract);
     event WormholeFinalityUpdated(uint8 indexed oldLevel, uint8 indexed newFinality);
     event OwnershipTransfered(address indexed oldOwner, address indexed newOwner);
@@ -103,6 +103,13 @@ contract CrossChainUSDCGovernance is CrossChainUSDCGetters, ERC1967Upgrade {
     function registerChainDomain(uint16 chainId_, uint32 domain) public onlyOwner {
         // update the chainDomains state variable
         setChainDomain(chainId_, domain);
+    }
+
+    /// @dev addAcceptedToken serves to determine which tokens can be burned + minted
+    /// via the Circle Bridge
+    function registerAcceptedToken(address token) public onlyOwner {
+        // update the acceptedTokens mapping
+        addAcceptedToken(token);
     }
 
     modifier onlyOwner() {

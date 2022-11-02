@@ -5,9 +5,9 @@ import {IWormhole} from "../interfaces/IWormhole.sol";
 import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
 
-import "./CrossChainUSDCSetters.sol";
+import "./CircleIntegrationSetters.sol";
 
-contract CrossChainUSDCGetters is CrossChainUSDCSetters {
+contract CircleIntegrationGetters is CircleIntegrationSetters {
     function owner() public view returns (address) {
         return _state.owner;
     }
@@ -42,6 +42,10 @@ contract CrossChainUSDCGetters is CrossChainUSDCSetters {
 
     function getRegisteredEmitter(uint16 emitterChainId) public view returns (bytes32) {
         return _state.registeredEmitters[emitterChainId];
+    }
+
+    function isAcceptedToken(address token) public view returns (bool) {
+        return _state.acceptedTokens[token];
     }
 
     function getChainDomain(uint16 chainId_) public view returns (uint32) {

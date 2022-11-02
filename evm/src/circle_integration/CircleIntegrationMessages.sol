@@ -3,13 +3,13 @@ pragma solidity ^0.8.13;
 
 import "../libraries/BytesLib.sol";
 
-import "./CrossChainUSDCStructs.sol";
+import "./CircleIntegrationStructs.sol";
 
-contract CrossChainUSDCMessages is CrossChainUSDCStructs {
+contract CircleIntegrationMessages is CircleIntegrationStructs {
     using BytesLib for bytes;
 
-    function encodeWormholeDeposit(
-        WormholeDeposit memory message
+    function encodeWormholeDepositWithPayload(
+        WormholeDepositWithPayload memory message
     ) public pure returns (bytes memory) {
         return abi.encodePacked(
             uint8(1), // payloadId
@@ -18,30 +18,15 @@ contract CrossChainUSDCMessages is CrossChainUSDCStructs {
             message.sourceDomain,
             message.targetDomain,
             message.nonce,
-            message.circleSender
-        );
-    }
-
-    function encodeWormholeDepositWithPayload(
-        WormholeDepositWithPayload memory message
-    ) public pure returns (bytes memory) {
-        return abi.encodePacked(
-            uint8(2), // payloadId
-            message.depositHeader.token,
-            message.depositHeader.amount,
-            message.depositHeader.sourceDomain,
-            message.depositHeader.targetDomain,
-            message.depositHeader.nonce,
-            message.depositHeader.circleSender,
             message.mintRecipient,
             message.payload.length,
             message.payload
         );
     }
 
-    function decodeWormholeDeposit(
+    function decodeWormholeDepositWithPayload(
         bytes memory encoded
-    ) public pure returns (WormholeDeposit memory message) {
+    ) public pure returns (WormholeDepositWithPayload memory message) {
         uint256 index = 0;
 
         // payloadId
@@ -69,48 +54,6 @@ contract CrossChainUSDCMessages is CrossChainUSDCStructs {
         // nonce
         message.nonce = encoded.toUint64(index);
         index += 8;
-
-        // circle bridge source contract
-        message.circleSender = encoded.toBytes32(index);
-        index += 32;
-
-        require(index == encoded.length, "invalid message length");
-    }
-
-    function decodeWormholeDepositWithPayload(
-        bytes memory encoded
-    ) public pure returns (WormholeDepositWithPayload memory message) {
-        uint256 index = 0;
-
-        // payloadId
-        message.depositHeader.payloadId = encoded.toUint8(index);
-        index += 1;
-
-        require(message.depositHeader.payloadId == 2, "invalid message payloadId");
-
-        // token address
-        message.depositHeader.token = encoded.toBytes32(index);
-        index += 32;
-
-        // token amount
-        message.depositHeader.amount = encoded.toUint256(index);
-        index += 32;
-
-        // source domain
-        message.depositHeader.sourceDomain = encoded.toUint32(index);
-        index += 4;
-
-        // target domain
-        message.depositHeader.targetDomain = encoded.toUint32(index);
-        index += 4;
-
-        // nonce
-        message.depositHeader.nonce = encoded.toUint64(index);
-        index += 8;
-
-        // circle bridge source contract
-        message.depositHeader.circleSender = encoded.toBytes32(index);
-        index += 32;
 
         // mintRecipient (target contract)
         message.mintRecipient = encoded.toBytes32(index);
