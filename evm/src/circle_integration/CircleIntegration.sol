@@ -51,7 +51,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         bytes memory encodedMessage = encodeWormholeDepositWithPayload(
             WormholeDepositWithPayload({
                 payloadId: uint8(1),
-                token: addressToBytes32(token),
+                token: addressToBytes32(targetAcceptedToken(token, targetChain)),
                 amount: amountReceived,
                 sourceDomain: getChainDomain(chainId()),
                 targetDomain: getChainDomain(targetChain),

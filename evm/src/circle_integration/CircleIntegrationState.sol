@@ -36,6 +36,9 @@ contract CircleIntegrationStorage {
         // Circle Bridge accepted tokens
         mapping(address => bool) acceptedTokens;
 
+        // Cricle Bridge accepted token to target chain accepted token
+        mapping(address => mapping(uint16 => address)) targetAcceptedTokens;
+
         // Wormhole chain ID to USDC Chain Domain Mapping
         mapping(uint16 => uint32) chainDomains;
 
