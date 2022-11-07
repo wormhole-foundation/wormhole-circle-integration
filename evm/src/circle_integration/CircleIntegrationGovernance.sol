@@ -112,6 +112,13 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         addAcceptedToken(token);
     }
 
+    function registerTargetChainToken(address sourceToken, uint16 chainId_, address targetToken) public onlyOwner {
+        require(isAcceptedToken(sourceToken), "token not accepted");
+
+        // update the targetAcceptedTokens mapping
+        addTargetAcceptedToken(sourceToken, chainId_, targetToken);
+    }
+
     modifier onlyOwner() {
         require(owner() == msg.sender, "caller not the owner");
         _;

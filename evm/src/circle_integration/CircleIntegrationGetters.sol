@@ -48,6 +48,10 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
         return _state.acceptedTokens[token];
     }
 
+    function targetAcceptedToken(address sourceToken, uint16 chainId_) public view returns (address) {
+        return _state.targetAcceptedTokens[sourceToken][chainId_];
+    }
+
     function getChainDomain(uint16 chainId_) public view returns (uint32) {
         return _state.chainDomains[chainId_];
     }
