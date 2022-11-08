@@ -53,9 +53,10 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
                 payloadId: uint8(1),
                 token: addressToBytes32(targetAcceptedToken(token, targetChain)),
                 amount: amountReceived,
-                sourceDomain: getChainDomain(chainId()),
-                targetDomain: getChainDomain(targetChain),
+                sourceDomain: getDomainFromChainId(chainId()),
+                targetDomain: getDomainFromChainId(targetChain),
                 nonce: nonce,
+                fromAddress: addressToBytes32(msg.sender),
                 mintRecipient: mintRecipient,
                 payload: payload
             })
@@ -102,7 +103,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // burn USDC on the bridge
         nonce = circleBridge.depositForBurnWithCaller(
             amountReceived,
-            getChainDomain(targetChain),
+            getDomainFromChainId(targetChain),
             mintRecipient,
             token,
             getRegisteredEmitter(targetChain)
