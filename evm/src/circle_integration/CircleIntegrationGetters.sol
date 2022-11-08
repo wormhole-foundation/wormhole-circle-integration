@@ -56,7 +56,7 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
         return _state.chainIdToDomain[chainId_];
     }
 
-    function getChainIdFromDomain(uint16 domain) public view returns (uint16) {
+    function getChainIdFromDomain(uint32 domain) public view returns (uint16) {
         return _state.domainToChainId[domain];
     }
 
