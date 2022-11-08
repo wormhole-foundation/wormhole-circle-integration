@@ -15,6 +15,7 @@ contract CircleIntegrationStructs {
         uint32 sourceDomain;
         uint32 targetDomain;
         uint64 nonce;
+        bytes32 fromAddress;
         bytes32 mintRecipient;
         bytes payload;
     }

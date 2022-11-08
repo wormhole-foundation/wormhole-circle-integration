@@ -56,6 +56,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
                 sourceDomain: getChainDomain(chainId()),
                 targetDomain: getChainDomain(targetChain),
                 nonce: nonce,
+                fromAddress: addressToBytes32(msg.sender),
                 mintRecipient: mintRecipient,
                 payload: payload
             })

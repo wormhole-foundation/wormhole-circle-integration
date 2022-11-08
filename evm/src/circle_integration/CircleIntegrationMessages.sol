@@ -18,6 +18,7 @@ contract CircleIntegrationMessages is CircleIntegrationStructs {
             message.sourceDomain,
             message.targetDomain,
             message.nonce,
+            message.fromAddress,
             message.mintRecipient,
             message.payload.length,
             message.payload
@@ -54,6 +55,10 @@ contract CircleIntegrationMessages is CircleIntegrationStructs {
         // nonce
         message.nonce = encoded.toUint64(index);
         index += 8;
+
+        // fromAddress (contract caller)
+        message.fromAddress = encoded.toBytes32(index);
+        index += 32;
 
         // mintRecipient (target contract)
         message.mintRecipient = encoded.toBytes32(index);
