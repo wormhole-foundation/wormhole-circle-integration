@@ -82,7 +82,9 @@ interface ICircleIntegration {
 
     function isAcceptedToken(address token) external view returns (bool);
 
-    function getChainDomain(uint16 chainId_) external view returns (uint32);
+    function getDomainFromChainId(uint16 chainId_) external view returns (uint32);
+
+    function getChainIdFromDomain(uint32 domain) external view returns (uint16);
 
     function isMessageConsumed(bytes32 hash) external view returns (bool);
 }

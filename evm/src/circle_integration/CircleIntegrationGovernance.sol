@@ -101,8 +101,9 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
     /// @dev registerChainDomain serves to save the USDC Bridge chain domains
     function registerChainDomain(uint16 chainId_, uint32 domain) public onlyOwner {
-        // update the chainDomains state variable
-        setChainDomain(chainId_, domain);
+        // update the chainId to domain (and domain to chainId) mappings
+        setChainIdToDomain(chainId_, domain);
+        setDomainToChainId(domain, chainId_);
     }
 
     /// @dev addAcceptedToken serves to determine which tokens can be burned + minted

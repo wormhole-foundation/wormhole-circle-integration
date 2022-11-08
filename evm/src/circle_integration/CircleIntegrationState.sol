@@ -40,7 +40,10 @@ contract CircleIntegrationStorage {
         mapping(address => mapping(uint16 => address)) targetAcceptedTokens;
 
         // Wormhole chain ID to USDC Chain Domain Mapping
-        mapping(uint16 => uint32) chainDomains;
+        mapping(uint16 => uint32) chainIdToDomain;
+
+        // Wormhole chain ID to USDC Chain Domain Mapping
+        mapping(uint32 => uint16) domainToChainId;
 
         // verified message hash to boolean
         mapping(bytes32 => bool) consumedMessages;

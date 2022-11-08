@@ -48,8 +48,12 @@ contract CircleIntegrationSetters is CircleIntegrationState {
         _state.targetAcceptedTokens[sourceToken][chainId] = targetToken;
     }
 
-    function setChainDomain(uint16 chainId_, uint32 domain) internal {
-        _state.chainDomains[chainId_] = domain;
+    function setChainIdToDomain(uint16 chainId_, uint32 domain) internal {
+        _state.chainIdToDomain[chainId_] = domain;
+    }
+
+    function setDomainToChainId(uint32 domain, uint16 chainId_) internal {
+        _state.domainToChainId[domain] = chainId_;
     }
 
     function consumeMessage(bytes32 hash) internal {
