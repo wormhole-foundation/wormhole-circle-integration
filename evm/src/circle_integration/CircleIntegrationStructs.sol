@@ -2,6 +2,13 @@
 pragma solidity ^0.8.13;
 
 contract CircleIntegrationStructs {
+    struct TransferParameters {
+        address token;
+        uint256 amount;
+        uint16 targetChain;
+        bytes32 mintRecipient;
+    }
+
     struct RedeemParameters {
         bytes encodedWormholeMessage;
         bytes circleBridgeMessage;

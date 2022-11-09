@@ -21,14 +21,12 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     /// a Wormhole message containing a user-specified payload with instructions for what to do with
     /// the USDC once it has been minted on the target chain.
     function transferTokensWithPayload(
-        address token,
-        uint256 amount,
-        uint16 targetChain,
-        bytes32 mintRecipient,
+        TransferParameters memory transferParams,
+        uint32 batchId,
         bytes memory payload
     ) public payable nonReentrant returns (uint64 messageSequence) {
         // confirm that the token is accepted by the Circle Bridge
-        require(isAcceptedToken(token), "token not accepted");
+        require(isAcceptedToken(transferParams.token), "token not accepted");
 
         // cache wormhole instance and fees to save on gas
         IWormhole wormhole = wormhole();
@@ -41,30 +39,30 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // Call the circle bridge and depositForBurn. The mintRecipient
         // should be the target contract composing on this USDC integration.
         (uint64 nonce, uint256 amountReceived) = _transferTokens(
-            token,
-            amount,
-            targetChain,
-            mintRecipient
+            transferParams.token,
+            transferParams.amount,
+            transferParams.targetChain,
+            transferParams.mintRecipient
         );
 
         // encode depositForBurn message
         bytes memory encodedMessage = encodeWormholeDepositWithPayload(
             WormholeDepositWithPayload({
                 payloadId: uint8(1),
-                token: addressToBytes32(targetAcceptedToken(token, targetChain)),
+                token: addressToBytes32(targetAcceptedToken(transferParams.token, transferParams.targetChain)),
                 amount: amountReceived,
                 sourceDomain: getDomainFromChainId(chainId()),
-                targetDomain: getDomainFromChainId(targetChain),
+                targetDomain: getDomainFromChainId(transferParams.targetChain),
                 nonce: nonce,
                 fromAddress: addressToBytes32(msg.sender),
-                mintRecipient: mintRecipient,
+                mintRecipient: transferParams.mintRecipient,
                 payload: payload
             })
         );
 
         // send the DepositForBurn wormhole message
         messageSequence = wormhole.publishMessage{value : wormholeFee}(
-            0, // messageId, set to zero to opt out of batching
+            batchId,
             encodedMessage,
             wormholeFinality()
         );
