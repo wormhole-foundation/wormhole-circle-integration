@@ -7,6 +7,13 @@ import {ICircleBridge} from "./circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "./circle/IMessageTransmitter.sol";
 
 interface ICircleIntegration {
+    struct TransferParameters {
+        address token;
+        uint256 amount;
+        uint16 targetChain;
+        bytes32 mintRecipient;
+    }
+
     struct RedeemParameters {
         bytes encodedWormholeMessage;
         bytes circleBridgeMessage;
@@ -39,10 +46,8 @@ interface ICircleIntegration {
     }
 
     function transferTokensWithPayload(
-        address token,
-        uint256 amount,
-        uint16 targetChain,
-        bytes32 mintRecipient,
+        TransferParameters memory transferParams,
+        uint32 batchId,
         bytes memory payload
     ) external payable returns (uint64 messageSequence);
 
