@@ -1,127 +1,199 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
+import {ERC1967Upgrade} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 
-import "./CircleIntegrationSetters.sol";
-import "./CircleIntegrationGetters.sol";
-import "./CircleIntegrationState.sol";
+import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
+import {BytesLib} from "wormhole/libraries/external/BytesLib.sol";
+
+import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
+import {CircleIntegrationGetters} from "./CircleIntegrationGetters.sol";
+import {CircleIntegrationState} from "./CircleIntegrationState.sol";
+import {ICircleIntegration} from "../interfaces/ICircleIntegration.sol";
 
 contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade {
+    using BytesLib for bytes;
+
     event ContractUpgraded(address indexed oldContract, address indexed newContract);
     event WormholeFinalityUpdated(uint8 indexed oldLevel, uint8 indexed newFinality);
-    event OwnershipTransfered(address indexed oldOwner, address indexed newOwner);
 
-    /// @dev upgrade serves to upgrade contract implementations
-    function upgrade(uint16 chainId_, address newImplementation) public onlyOwner {
-        require(chainId_ == chainId(), "wrong chain");
+    // "CircleIntegration" (left padded)
+    bytes32 constant GOVERNANCE_MODULE = 0x000000000000000000000000000000436972636c65496e746567726174696f6e;
 
-        address currentImplementation = _getImplementation();
+    uint8 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY = 1;
+    uint256 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY_LENGTH = 36;
 
-        _upgradeTo(newImplementation);
+    uint8 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN = 2;
+    uint256 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN_LENGTH = 73;
 
-        /// @dev call initialize function of the new implementation
-        (bool success, bytes memory reason) = newImplementation.delegatecall(
-            abi.encodeWithSignature("initialize()")
-        );
+    uint8 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN = 3;
+    uint256 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN_LENGTH = 67;
 
-        require(success, string(reason));
+    uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
+    uint256 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH = 101;
 
-        emit ContractUpgraded(currentImplementation, newImplementation);
-    }
+    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 5;
+    uint256 constant GOVERNANCE_UPGRADE_CONTRACT_LENGTH = 67;
 
     /// @dev updateWormholeFinality serves to change the wormhole messaging consistencyLevel
-    function updateWormholeFinality(
-        uint16 chainId_,
-        uint8 newWormholeFinality
-    ) public onlyOwner {
-        require(chainId_ == chainId(), "wrong chain");
-        require(newWormholeFinality > 0, "invalid wormhole finality");
+    function updateWormholeFinality(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_UPDATE_WORMHOLE_FINALITY);
+        require(payload.length == GOVERNANCE_UPDATE_WORMHOLE_FINALITY_LENGTH, "invalid governance payload length");
 
         uint8 currentWormholeFinality = wormholeFinality();
+
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
+
+        // Finality value at byte 35
+        uint8 newWormholeFinality = payload.toUint8(35);
+        require(newWormholeFinality > 0, "invalid finality");
 
         setWormholeFinality(newWormholeFinality);
 
         emit WormholeFinalityUpdated(currentWormholeFinality, newWormholeFinality);
     }
 
-    /**
-     * @dev submitOwnershipTransferRequest serves to begin the ownership transfer process of the contracts
-     * - it saves an address for the new owner in the pending state
-     */
-    function submitOwnershipTransferRequest(
-        uint16 chainId_,
-        address newOwner
-    ) public onlyOwner {
-        require(chainId_ == chainId(), "wrong chain");
-        require(newOwner != address(0), "newOwner cannot equal address(0)");
+    /// @dev registerEmitterAndDomain serves to save trusted emitter contract addresses
+    /// and Circle's chain domain
+    function registerEmitterAndDomain(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN);
+        require(payload.length == GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN_LENGTH, "invalid governance payload length");
 
-        setPendingOwner(newOwner);
-    }
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
 
-    /**
-     * @dev confirmOwnershipTransferRequest serves to finalize an ownership transfer
-     * - it checks that the caller is the pendingOwner to validate the wallet address
-     * - it updates the owner state variable with the pendingOwner state variable
-     */
-    function confirmOwnershipTransferRequest() public {
-        /// cache the new owner address
-        address newOwner = pendingOwner();
+        // emitterChainId at byte 35
+        uint16 emitterChainId = payload.toUint16(35);
+        require(emitterChainId > 0 && emitterChainId != chainId(), "invalid chain");
+        require(getRegisteredEmitter(emitterChainId) == bytes32(0), "chain already registered");
 
-        require(msg.sender == newOwner, "caller must be pendingOwner");
+        // emitterAddress at byte 37
+        bytes32 emitterAddress = payload.toBytes32(37);
+        require(emitterAddress != bytes32(0), "emitter cannot be zero address");
 
-        /// cache currentOwner for Event
-        address currentOwner = owner();
-
-        /// @dev update the owner in the contract state and reset the pending owner
-        setOwner(newOwner);
-        setPendingOwner(address(0));
-
-        emit OwnershipTransfered(currentOwner, newOwner);
-    }
-
-    /// @dev registerEmitter serves to save trusted emitter contract addresses
-    function registerEmitter(
-        uint16 emitterChainId,
-        bytes32 emitterAddress
-    ) public onlyOwner {
-        // sanity check both input arguments
-        require(
-            emitterAddress != bytes32(0),
-            "emitterAddress cannot equal bytes32(0)"
-        );
-        require(
-            getRegisteredEmitter(emitterChainId) == bytes32(0),
-            "emitterChainId already registered"
-        );
+        // domain at byte 69 (hehe)
+        uint32 domain = payload.toUint32(69);
+        require(domain != localDomain(), "domain == localDomain()");
 
         // update the registeredEmitters state variable
         setEmitter(emitterChainId, emitterAddress);
-    }
 
-    /// @dev registerChainDomain serves to save the USDC Bridge chain domains
-    function registerChainDomain(uint16 chainId_, uint32 domain) public onlyOwner {
         // update the chainId to domain (and domain to chainId) mappings
-        setChainIdToDomain(chainId_, domain);
-        setDomainToChainId(domain, chainId_);
+        setChainIdToDomain(emitterChainId, domain);
+        setDomainToChainId(domain, emitterChainId);
     }
 
     /// @dev addAcceptedToken serves to determine which tokens can be burned + minted
     /// via the Circle Bridge
-    function registerAcceptedToken(address token) public onlyOwner {
+    function registerAcceptedToken(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_ACCEPTED_TOKEN);
+        require(payload.length == GOVERNANCE_REGISTER_ACCEPTED_TOKEN_LENGTH, "invalid governance payload length");
+
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
+
+        // token at byte 35 (32 bytes, but last 20 is the address)
+        address token = readAddressFromBytes32(payload, 35);
+        require(token != address(0), "token is zero address");
+
         // update the acceptedTokens mapping
         addAcceptedToken(token);
     }
 
-    function registerTargetChainToken(address sourceToken, uint16 chainId_, address targetToken) public onlyOwner {
-        require(isAcceptedToken(sourceToken), "token not accepted");
+    function registerTargetChainToken(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN);
+        require(payload.length == GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH, "invalid governance payload length");
+
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
+
+        // sourceToken at byte 35 (32 bytes, but last 20 is the address)
+        address sourceToken = readAddressFromBytes32(payload, 35);
+        require(isAcceptedToken(sourceToken), "source token not accepted");
+
+        // targetChain at byte 67
+        uint16 targetChain = payload.toUint16(67);
+        require(targetChain > 0 && targetChain != chainId(), "invalid target chain");
+
+        // targetToken at byte 69 (hehe)
+        bytes32 targetToken = payload.toBytes32(69);
+        require(targetToken != bytes32(0), "target token is zero address");
 
         // update the targetAcceptedTokens mapping
-        addTargetAcceptedToken(sourceToken, chainId_, targetToken);
+        addTargetAcceptedToken(sourceToken, targetChain, targetToken);
     }
 
-    modifier onlyOwner() {
-        require(owner() == msg.sender, "caller not the owner");
-        _;
+    /// @dev upgrade serves to upgrade contract implementations
+    function upgradeContract(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_UPGRADE_CONTRACT);
+        require(payload.length == GOVERNANCE_UPGRADE_CONTRACT_LENGTH, "invalid governance payload length");
+
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
+
+        address currentImplementation = _getImplementation();
+
+        // newImplementation at byte 35 (32 bytes, but last 20 is the address)
+        address newImplementation = readAddressFromBytes32(payload, 35);
+        {
+            (, bytes memory queried) =
+                newImplementation.staticcall(abi.encodeWithSignature("circleIntegrationImplementation()"));
+            require(queried.length == 32, "invalid implementation");
+            require(
+                abi.decode(queried, (bytes32)) == keccak256("circleIntegrationImplementation()"),
+                "invalid implementation"
+            );
+        }
+
+        _upgradeTo(newImplementation);
+
+        /// @dev call initialize function of the new implementation
+        (bool success, bytes memory reason) = newImplementation.delegatecall(abi.encodeWithSignature("initialize()"));
+        require(success, string(reason));
+
+        emit ContractUpgraded(currentImplementation, newImplementation);
+    }
+
+    function verifyAndConsumeGovernanceMessage(bytes memory encodedMessage, uint8 action)
+        internal
+        returns (bytes memory)
+    {
+        (bytes32 messageHash, bytes memory payload) = verifyGovernanceMessage(encodedMessage, action);
+        consumeMessage(messageHash);
+        return payload;
+    }
+
+    function verifyGovernanceMessage(bytes memory encodedMessage, uint8 action)
+        public
+        view
+        returns (bytes32 messageHash, bytes memory payload)
+    {
+        require(evmChain() == block.chainid, "invalid evm chain");
+        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole().parseAndVerifyVM(encodedMessage);
+
+        require(valid, reason);
+        require(vm.emitterChainId == governanceChainId(), "invalid governance chain");
+        require(vm.emitterAddress == governanceContract(), "invalid governance contract");
+        require(!isMessageConsumed(vm.hash), "governance action already consumed");
+
+        payload = vm.payload;
+        // module at byte 0
+        require(payload.toBytes32(0) == GOVERNANCE_MODULE, "invalid governance module");
+        // action at byte 32
+        require(payload.toUint8(32) == action, "invalid governance action");
+
+        messageHash = vm.hash;
+    }
+
+    function readAddressFromBytes32(bytes memory serialized, uint256 start) internal pure returns (address) {
+        uint256 end = start + 12;
+        for (uint256 i = start; i < end;) {
+            require(serialized.toUint8(i) == 0, "invalid address");
+            unchecked {
+                i += 1;
+            }
+        }
+        return serialized.toAddress(end);
     }
 }

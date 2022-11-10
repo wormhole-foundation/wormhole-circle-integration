@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
 
-import {IWormhole} from "../src/interfaces/IWormhole.sol";
+import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
+
 import {ICircleBridge} from "../src/interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.sol";
 
@@ -12,25 +13,32 @@ import {CircleIntegrationSetup} from "../src/circle_integration/CircleIntegratio
 import {CircleIntegrationImplementation} from "../src/circle_integration/CircleIntegrationImplementation.sol";
 import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
 
+import {WormholeSimulator} from "wormhole-forge-sdk/WormholeSimulator.sol";
+
 import "forge-std/console.sol";
 
 contract ContractScript is Script {
-    IWormhole wormhole;
-    ICircleBridge circleBridge;
-    IMessageTransmitter messageTransmitter;
+    // Wormhole
+    WormholeSimulator wormholeSimulator;
 
-    // USDC Burn/Mint contracts
+    // Circle
+    ICircleBridge circleBridge;
+
+    // Circle Integration
     CircleIntegrationSetup setup;
     CircleIntegrationImplementation implementation;
     CircleIntegrationProxy proxy;
 
     function setUp() public {
-        wormhole = IWormhole(vm.envAddress("RELEASE_WORMHOLE_ADDRESS"));
+        // Wormhole
+        wormholeSimulator = wormholeSimulator = new WormholeSimulator(
+            vm.envAddress("RELEASE_WORMHOLE_ADDRESS"), 0);
+
+        // Circle
         circleBridge = ICircleBridge(vm.envAddress("RELEASE_CIRCLE_BRIDGE_ADDRESS"));
-        messageTransmitter = IMessageTransmitter(vm.envAddress("RELEASE_MESSAGE_TRANSMITTER_ADDRESS"));
     }
 
-    function deployUSDCIntegration() public {
+    function deployCircleIntegration() public {
         // first Setup
         setup = new CircleIntegrationSetup();
 
@@ -41,13 +49,13 @@ contract ContractScript is Script {
         proxy = new CircleIntegrationProxy(
             address(setup),
             abi.encodeWithSelector(
-                bytes4(keccak256("setup(address,uint16,address,uint8,address,address)")),
+                bytes4(keccak256("setup(address,address,uint8,address,uint16,bytes32)")),
                 address(implementation),
-                wormhole.chainId(),
-                address(wormhole),
+                address(wormholeSimulator.wormhole()),
                 uint8(1), // finality
                 address(circleBridge),
-                address(messageTransmitter)
+                wormholeSimulator.governanceChainId(),
+                wormholeSimulator.governanceContract()
             )
         );
     }
@@ -57,7 +65,7 @@ contract ContractScript is Script {
         vm.startBroadcast();
 
         // HelloWorld.sol
-        deployUSDCIntegration();
+        deployCircleIntegration();
 
         // finished
         vm.stopBroadcast();

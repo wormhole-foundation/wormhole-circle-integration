@@ -35,14 +35,21 @@ fuji: 0x3e6a4543165aaecbf7ffc81e54a1c7939cb12cb8
 ### Structs
 
 ```
+struct TransferParameters {
+    address token;
+    uint256 amount;
+    uint16 targetChain;
+    bytes32 mintRecipient;
+}
+
 struct RedeemParameters {
     bytes encodedWormholeMessage;
     bytes circleBridgeMessage;
     bytes circleAttestation;
 }
 
-struct WormholeDepositWithPayload {
-    uint8 payloadId; // == 1
+// payload ID == 1
+struct DepositWithPayload {
     bytes32 token;
     uint256 amount;
     uint32 sourceDomain;
@@ -51,33 +58,18 @@ struct WormholeDepositWithPayload {
     bytes32 mintRecipient;
     bytes payload;
 }
-
-struct CircleDeposit {
-    // Message Header
-    uint32 version;
-    uint32 sourceDomain;
-    uint32 targetDomain;
-    uint64 nonce;
-    bytes32 circleSender;
-    bytes32 circleReceiver;
-    // End of Message Header
-    // There should be an arbitrary length message following the header,
-    // but we don't need to parse this message for verification purposes.
-}
 ```
 
 ### API
 
 ```solidity
 function transferTokensWithPayload(
-    address token,
-    uint256 amount,
-    uint16 targetChain,
-    bytes32 mintRecipient,
+    TransferParameters memory transferParams,
+    uint32 batchId,
     bytes memory payload
 ) public payable returns (uint64 messageSequence)
 
 function redeemTokensWithPayload(
     RedeemParameters memory params
-) public returns (WormholeDepositWithPayload memory wormholeDepositWithPayload)
+) public returns (DepositWithPayload memory depositWithPayload)
 ```
