@@ -45,11 +45,10 @@ interface ICircleIntegration {
     // There should be an arbitrary length message following the header,
     // but we don't need to parse this message for verification purposes.
 
-    function transferTokensWithPayload(
-        TransferParameters memory transferParams,
-        uint32 batchId,
-        bytes memory payload
-    ) external payable returns (uint64 messageSequence);
+    function transferTokensWithPayload(TransferParameters memory transferParams, uint32 batchId, bytes memory payload)
+        external
+        payable
+        returns (uint64 messageSequence);
 
     function redeemTokensWithPayload(RedeemParameters memory params)
         external
@@ -107,5 +106,5 @@ interface ICircleIntegration {
 
     function registerAcceptedToken(bytes memory encodedMessage) external;
 
-    function registerTargetChainToken(address sourceToken, uint16 chainId_, bytes32 targetToken) external;
+    function registerTargetChainToken(bytes memory encodedMessage) external;
 }

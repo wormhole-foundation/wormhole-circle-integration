@@ -30,22 +30,7 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
     uint256 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN_LENGTH = 67;
 
     uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
-
-    /// @dev upgrade serves to upgrade contract implementations
-    function upgrade(uint16 chainId_, address newImplementation) public onlyOwner {
-        require(chainId_ == chainId(), "wrong chain");
-
-        address currentImplementation = _getImplementation();
-
-        _upgradeTo(newImplementation);
-
-        /// @dev call initialize function of the new implementation
-        (bool success, bytes memory reason) = newImplementation.delegatecall(abi.encodeWithSignature("initialize()"));
-
-        require(success, string(reason));
-
-        emit ContractUpgraded(currentImplementation, newImplementation);
-    }
+    uint256 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH = 101;
 
     /// @dev updateWormholeFinality serves to change the wormhole messaging consistencyLevel
     function updateWormholeFinality(bytes memory encodedMessage) public {
@@ -105,29 +90,51 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         // Updating finality should only be relevant for this contract's chain ID
         require(payload.toUint16(33) == chainId(), "invalid target chain");
 
-        for (uint256 i = 35; i < 47;) {
-            require(payload.toUint8(i) == 0, "invalid token address");
-            unchecked {
-                i += 1;
-            }
-        }
-        address token = payload.toAddress(47);
+        // token at byte 35 (32 bytes, but last 20 is the address)
+        address token = readAddressFromBytes32(payload, 35);
         require(token != address(0), "token is zero address");
 
         // update the acceptedTokens mapping
         addAcceptedToken(token);
     }
 
-    function registerTargetChainToken(address sourceToken, uint16 targetChainId, bytes32 targetToken)
-        public
-        onlyOwner
-    {
-        require(isAcceptedToken(sourceToken), "token not accepted");
-        require(targetChainId > 0 && targetChainId != chainId(), "invalid targetChainId");
+    function registerTargetChainToken(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN);
+        require(payload.length == GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH, "invalid governance payload length");
+
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
+
+        // sourceToken at byte 35 (32 bytes, but last 20 is the address)
+        address sourceToken = readAddressFromBytes32(payload, 35);
+        require(isAcceptedToken(sourceToken), "source token not accepted");
+
+        // targetChain at byte 67
+        uint16 targetChain = payload.toUint16(67);
+        require(targetChain > 0 && targetChain != chainId(), "invalid target chain");
+
+        // targetToken at byte 69 (hehe)
+        bytes32 targetToken = payload.toBytes32(69);
         require(targetToken != bytes32(0), "target token is zero address");
 
         // update the targetAcceptedTokens mapping
-        addTargetAcceptedToken(sourceToken, targetChainId, targetToken);
+        addTargetAcceptedToken(sourceToken, targetChain, targetToken);
+    }
+
+    /// @dev upgrade serves to upgrade contract implementations
+    function upgrade(uint16 chainId_, address newImplementation) public onlyOwner {
+        require(chainId_ == chainId(), "wrong chain");
+
+        address currentImplementation = _getImplementation();
+
+        _upgradeTo(newImplementation);
+
+        /// @dev call initialize function of the new implementation
+        (bool success, bytes memory reason) = newImplementation.delegatecall(abi.encodeWithSignature("initialize()"));
+
+        require(success, string(reason));
+
+        emit ContractUpgraded(currentImplementation, newImplementation);
     }
 
     modifier onlyOwner() {
@@ -157,11 +164,22 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         require(!isMessageConsumed(vm.hash), "governance action already consumed");
 
         payload = vm.payload;
-        // First 32 bytes is the module
+        // module at byte 0
         require(payload.toBytes32(0) == GOVERNANCE_MODULE, "invalid governance module");
-        // Bytes 32 through 33 is the action
+        // action at byte 32
         require(payload.toUint8(32) == action, "invalid governance action");
 
         messageHash = vm.hash;
+    }
+
+    function readAddressFromBytes32(bytes memory serialized, uint256 start) internal pure returns (address) {
+        uint256 end = start + 12;
+        for (uint256 i = start; i < end;) {
+            require(serialized.toUint8(i) == 0, "invalid address");
+            unchecked {
+                i += 1;
+            }
+        }
+        return serialized.toAddress(end);
     }
 }
