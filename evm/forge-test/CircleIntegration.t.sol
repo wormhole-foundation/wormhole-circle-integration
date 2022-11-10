@@ -123,12 +123,6 @@ contract CircleIntegrationTest is Test {
         circleIntegration.registerAcceptedToken(encodedMessage);
     }
 
-    function registerUsdcAndTarget() public {
-        registerToken(address(usdc));
-
-        // TODO;
-    }
-
     function registerContract(uint16 foreignChain, bytes32 foreignEmitter, uint32 domain) public {
         bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
             wormholeSimulator.governanceChainId(),
@@ -145,7 +139,7 @@ contract CircleIntegrationTest is Test {
 
     function prepareCircleIntegrationTest(uint256 amount) public {
         // Register USDC with CircleIntegration
-        registerUsdcAndTarget();
+        registerToken(address(usdc));
 
         // Set up USDC token for test
         if (amount > 0) {
