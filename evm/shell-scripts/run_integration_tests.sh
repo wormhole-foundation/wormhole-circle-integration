@@ -9,13 +9,13 @@ fi
 # ethereum goerli testnet
 anvil \
     -m "myth like bonus scare over problem client lizard pioneer submit female collect" \
-    --fork-url $ETH_FORK_RPC > anvil.log &
+    --fork-url $ETH_FORK_RPC > anvil_eth.log &
 
 # avalanche fuji testnet
 anvil \
     -m "myth like bonus scare over problem client lizard pioneer submit female collect" \
     --port 8546 \
-    --fork-url $ETH_FORK_RPC > anvil.log &
+    --fork-url $AVAX_FORK_RPC > anvil_avax.log &
 
 sleep 2
 

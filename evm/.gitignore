@@ -1,4 +1,4 @@
-anvil.log
+anvil*.log
 broadcast*
 cache
 deploy.out
