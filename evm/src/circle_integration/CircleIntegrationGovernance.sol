@@ -169,6 +169,7 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         view
         returns (bytes32 messageHash, bytes memory payload)
     {
+        require(evmChain() == block.chainid, "invalid evm chain");
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole().parseAndVerifyVM(encodedMessage);
 
         require(valid, reason);

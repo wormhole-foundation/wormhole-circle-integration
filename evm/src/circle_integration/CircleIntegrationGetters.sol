@@ -67,4 +67,8 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
     function governanceContract() public view returns (bytes32) {
         return _state.governanceContract;
     }
+
+    function evmChain() public view returns (uint256) {
+        return _state.evmChain;
+    }
 }

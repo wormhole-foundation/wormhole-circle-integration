@@ -32,6 +32,8 @@ contract CircleIntegrationSetup is CircleIntegrationSetters, ERC1967Upgrade, Con
         setCircleTransmitter(address(messageTransmitter));
         setLocalDomain(messageTransmitter.localDomain());
 
+        setEvmChain(block.chainid);
+
         // set the implementation
         _upgradeTo(implementation);
 

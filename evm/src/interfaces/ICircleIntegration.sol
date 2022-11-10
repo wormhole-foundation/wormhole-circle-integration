@@ -75,6 +75,8 @@ interface ICircleIntegration {
         view
         returns (bytes32 messageHash, bytes memory payload);
 
+    function evmChain() external view returns (uint256);
+
     // guardian governance only
     function updateWormholeFinality(bytes memory encodedMessage) external;
 

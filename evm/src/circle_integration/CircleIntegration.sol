@@ -136,6 +136,8 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     }
 
     function verifyWormholeRedeemMessage(bytes memory encodedMessage) internal returns (IWormhole.VM memory) {
+        require(evmChain() == block.chainid, "invalid evm chain");
+
         // parse and verify the Wormhole core message
         (IWormhole.VM memory verifiedMessage, bool valid, string memory reason) =
             wormhole().parseAndVerifyVM(encodedMessage);

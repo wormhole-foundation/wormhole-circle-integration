@@ -60,4 +60,8 @@ contract CircleIntegrationSetters is CircleIntegrationState {
         _state.governanceChainId = governanceChainId;
         _state.governanceContract = governanceContract;
     }
+
+    function setEvmChain(uint256 evmChain) internal {
+        _state.evmChain = evmChain;
+    }
 }

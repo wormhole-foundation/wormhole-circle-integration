@@ -33,6 +33,8 @@ contract CircleIntegrationStorage {
         mapping(uint32 => uint16) domainToChainId;
         // verified message hash to boolean
         mapping(bytes32 => bool) consumedMessages;
+        // evm chainid
+        uint256 evmChain;
         // storage gap
         uint256[50] ______gap;
     }
