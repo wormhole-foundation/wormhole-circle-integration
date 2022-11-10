@@ -10,9 +10,9 @@ contract CircleIntegrationStructs {
     }
 
     struct RedeemParameters {
-        bytes circleMessage;
-        bytes circleAttestation;
         bytes encodedWormholeMessage;
+        bytes circleBridgeMessage;
+        bytes circleAttestation;
     }
 
     struct DepositWithPayload {
