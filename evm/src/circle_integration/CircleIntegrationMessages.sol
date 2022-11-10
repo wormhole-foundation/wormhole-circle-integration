@@ -18,7 +18,7 @@ contract CircleIntegrationMessages is CircleIntegrationStructs {
             message.nonce,
             message.fromAddress,
             message.mintRecipient,
-            message.payload.length,
+            uint16(message.payload.length),
             message.payload
         );
     }
@@ -58,8 +58,8 @@ contract CircleIntegrationMessages is CircleIntegrationStructs {
         index += 32;
 
         // message payload length
-        uint256 payloadLen = encoded.toUint256(index);
-        index += 32;
+        uint256 payloadLen = encoded.toUint16(index);
+        index += 2;
 
         // parse the additional payload to confirm the entire message was parsed
         message.payload = encoded.slice(index, payloadLen);

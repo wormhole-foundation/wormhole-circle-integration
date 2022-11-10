@@ -6,18 +6,24 @@ if [ $? -eq 0 ]; then
     exit 1;
 fi
 
+# ethereum goerli testnet
 anvil \
     -m "myth like bonus scare over problem client lizard pioneer submit female collect" \
-    --fork-url $TESTING_FORK_RPC \
-	--fork-block-number $TESTING_FORK_BLOCK_NUMBER > anvil.log &
+    --fork-url $ETH_FORK_RPC > anvil.log &
+
+# avalanche fuji testnet
+anvil \
+    -m "myth like bonus scare over problem client lizard pioneer submit female collect" \
+    --port 8546 \
+    --fork-url $ETH_FORK_RPC > anvil.log &
 
 sleep 2
 
-## anvil's rpc
-export RPC="http://localhost:8545"
-
 ## first key from mnemonic above
 export PRIVATE_KEY="0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+
+## anvil's rpc (eth)
+export RPC="http://localhost:8545"
 
 export RELEASE_WORMHOLE_ADDRESS=$TESTING_WORMHOLE_ADDRESS
 export RELEASE_CIRCLE_BRIDGE_ADDRESS=$TESTING_CIRCLE_BRIDGE_ADDRESS

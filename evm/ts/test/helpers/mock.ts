@@ -42,7 +42,7 @@ export class MockCircleIntegration extends MockEmitter {
     // const depositWithPayload: DepositWithPayload = {
     // }
     // const encoded =
-    //   await this.interfaceContract.encodeWormholeDepositWithPayload({});
+    //   await this.interfaceContract.encodeDepositWithPayload({});
   }
 }
 

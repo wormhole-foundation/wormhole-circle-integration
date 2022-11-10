@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BytesLib} from "wormhole/libraries/external/BytesLib.sol";
 
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 import {ICircleIntegration} from "../src/interfaces/ICircleIntegration.sol";
@@ -27,6 +27,8 @@ interface IUSDC is IERC20 {
 }
 
 contract CircleIntegrationTest is Test {
+    using BytesLib for bytes;
+
     bytes32 constant GOVERNANCE_MODULE = 0x000000000000000000000000000000436972636c65496e746567726174696f6e;
 
     uint8 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY = 1;
@@ -146,13 +148,170 @@ contract CircleIntegrationTest is Test {
         registerUsdcAndTarget();
 
         // Set up USDC token for test
-        require(amount > 0, "amount == 0");
+        if (amount > 0) {
+            // First mint USDC.
+            mintUSDC(amount);
 
-        // First mint USDC.
-        mintUSDC(amount);
+            // Next set allowance.
+            usdc.approve(address(circleIntegration), amount);
+        }
+    }
 
-        // Next set allowance.
-        usdc.approve(address(circleIntegration), amount);
+    function testEncodeDepositWithPayload(
+        bytes32 token,
+        uint256 amount,
+        uint32 sourceDomain,
+        uint32 targetDomain,
+        uint64 nonce,
+        bytes32 fromAddress,
+        bytes32 mintRecipient,
+        bytes memory payload
+    ) public {
+        vm.assume(token != bytes32(0));
+        vm.assume(amount > 0);
+        vm.assume(targetDomain != sourceDomain);
+        vm.assume(nonce > 0);
+        vm.assume(fromAddress != bytes32(0));
+        vm.assume(mintRecipient != bytes32(0));
+        vm.assume(payload.length > 0);
+
+        ICircleIntegration.DepositWithPayload memory deposit;
+        deposit.token = token;
+        deposit.amount = amount;
+
+        deposit.sourceDomain = sourceDomain;
+        deposit.targetDomain = targetDomain;
+
+        deposit.nonce = nonce;
+        deposit.fromAddress = fromAddress;
+        deposit.mintRecipient = mintRecipient;
+        deposit.payload = payload;
+
+        bytes memory serialized = circleIntegration.encodeDepositWithPayload(deposit);
+
+        // payload ID
+        require(serialized.toUint8(0) == 1, "invalid payload");
+
+        // token
+        for (uint256 i = 0; i < 32;) {
+            require(deposit.token[i] == serialized[i + 1], "invalid token serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // amount
+        for (uint256 i = 0; i < 32;) {
+            require(bytes32(deposit.amount)[i] == serialized[i + 33], "invalid amount serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // sourceDomain 65
+        for (uint256 i = 0; i < 4;) {
+            require(bytes4(deposit.sourceDomain)[i] == serialized[i + 65], "invalid sourceDomain serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+        // targetDomain 69 (hehe)
+        for (uint256 i = 0; i < 4;) {
+            require(bytes4(deposit.targetDomain)[i] == serialized[i + 69], "invalid targetDomain serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // nonce
+        for (uint256 i = 0; i < 8;) {
+            require(bytes8(deposit.nonce)[i] == serialized[i + 73], "invalid nonce serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // fromAddress
+        for (uint256 i = 0; i < 8;) {
+            require(deposit.fromAddress[i] == serialized[i + 81], "invalid fromAddress serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // mintRecipient
+        for (uint256 i = 0; i < 8;) {
+            require(deposit.mintRecipient[i] == serialized[i + 113], "invalid mintRecipient serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // payload length
+        uint256 payloadLen = deposit.payload.length;
+        for (uint256 i = 0; i < 2;) {
+            require(bytes32(payloadLen)[i + 30] == serialized[i + 145], "invalid payload length serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+
+        // payload
+        for (uint256 i = 0; i < payloadLen;) {
+            require(deposit.payload[i] == serialized[i + 147], "invalid payload serialization");
+            unchecked {
+                i += 1;
+            }
+        }
+    }
+
+    function testDecodeDepositWithPayload(
+        bytes32 token,
+        uint256 amount,
+        uint32 sourceDomain,
+        uint32 targetDomain,
+        uint64 nonce,
+        bytes32 fromAddress,
+        bytes32 mintRecipient,
+        bytes memory payload
+    ) public {
+        vm.assume(token != bytes32(0));
+        vm.assume(amount > 0);
+        vm.assume(targetDomain != sourceDomain);
+        vm.assume(nonce > 0);
+        vm.assume(fromAddress != bytes32(0));
+        vm.assume(mintRecipient != bytes32(0));
+        vm.assume(payload.length > 0);
+
+        ICircleIntegration.DepositWithPayload memory expected;
+        expected.token = token;
+        expected.amount = amount;
+
+        expected.sourceDomain = 0;
+        expected.targetDomain = 1;
+
+        expected.nonce = nonce;
+        expected.fromAddress = fromAddress;
+        expected.mintRecipient = mintRecipient;
+        expected.payload = payload;
+
+        bytes memory serialized = circleIntegration.encodeDepositWithPayload(expected);
+
+        ICircleIntegration.DepositWithPayload memory deposit = circleIntegration.decodeDepositWithPayload(serialized);
+        require(deposit.token == expected.token, "token != expected");
+        require(deposit.amount == expected.amount, "amount != expected");
+        require(deposit.sourceDomain == expected.sourceDomain, "sourceDomain != expected");
+        require(deposit.targetDomain == expected.targetDomain, "targetDomain != expected");
+        require(deposit.nonce == expected.nonce, "nonce != expected");
+        require(deposit.fromAddress == expected.fromAddress, "fromAddress != expected");
+        require(deposit.mintRecipient == expected.mintRecipient, "mintRecipient != expected");
+
+        for (uint256 i = 0; i < deposit.payload.length;) {
+            require(deposit.payload[i] == expected.payload[i], "payload != expected");
+            unchecked {
+                i += 1;
+            }
+        }
     }
 
     function testCannotConsumeGovernanceMessageInvalidGovernanceChainId(uint16 governanceChainId, uint8 action)
@@ -864,16 +1023,46 @@ contract CircleIntegrationTest is Test {
         require(circleIntegration.isInitialized(address(implementation)), "implementation not initialized");
     }
 
+    function testCannotTransferTokensWithPayloadInvalidToken(
+        address token,
+        uint256 amount,
+        uint16 targetChain,
+        bytes32 mintRecipient
+    ) public {
+        vm.assume(token != address(usdc));
+        vm.assume(amount > 0 && amount <= maxUSDCAmountToMint());
+        vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
+        vm.assume(mintRecipient != bytes32(0));
+
+        prepareCircleIntegrationTest(amount);
+
+        // You shall not pass!
+        vm.expectRevert("token not accepted");
+        circleIntegration.transferTokensWithPayload(
+            ICircleIntegration.TransferParameters({
+                token: token,
+                amount: amount,
+                targetChain: targetChain,
+                mintRecipient: mintRecipient
+            }),
+            0, // batchId
+            abi.encodePacked("All your base are belong to us") // payload
+        );
+    }
+
     function testCannotTransferTokensWithPayloadZeroAmount(uint16 targetChain, bytes32 mintRecipient) public {
         vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
         vm.assume(mintRecipient != bytes32(0));
+
+        uint256 amount = 0;
+        prepareCircleIntegrationTest(amount);
 
         // You shall not pass!
         vm.expectRevert("amount must be > 0");
         circleIntegration.transferTokensWithPayload(
             ICircleIntegration.TransferParameters({
                 token: address(usdc),
-                amount: 0,
+                amount: amount,
                 targetChain: targetChain,
                 mintRecipient: mintRecipient
             }),

@@ -32,13 +32,11 @@ forge-test: dependencies
 	forge test \
 		-vv \
 		--fork-url ${TESTING_FORK_RPC} \
-		--fork-block-number ${TESTING_FORK_BLOCK_NUMBER}
 
 .PHONY: forge-test
 gas-report: dependencies
 	forge test \
 		--fork-url ${TESTING_FORK_RPC} \
-		--fork-block-number ${TESTING_FORK_BLOCK_NUMBER} \
 		--gas-report
 
 .PHONY: integration-test

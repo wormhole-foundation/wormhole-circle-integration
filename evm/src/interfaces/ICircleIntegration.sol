@@ -20,8 +20,7 @@ interface ICircleIntegration {
         bytes circleAttestation;
     }
 
-    struct WormholeDepositWithPayload {
-        uint8 payloadId; // == 1
+    struct DepositWithPayload {
         bytes32 token;
         uint256 amount;
         uint32 sourceDomain;
@@ -32,19 +31,6 @@ interface ICircleIntegration {
         bytes payload;
     }
 
-    struct CircleDeposit {
-        // Message Header
-        uint32 version;
-        uint32 sourceDomain;
-        uint32 targetDomain;
-        uint64 nonce;
-        bytes32 circleSender;
-        bytes32 circleReceiver;
-    }
-    // End of Message Header
-    // There should be an arbitrary length message following the header,
-    // but we don't need to parse this message for verification purposes.
-
     function transferTokensWithPayload(TransferParameters memory transferParams, uint32 batchId, bytes memory payload)
         external
         payable
@@ -52,19 +38,11 @@ interface ICircleIntegration {
 
     function redeemTokensWithPayload(RedeemParameters memory params)
         external
-        returns (WormholeDepositWithPayload memory wormholeDepositWithPayload);
+        returns (DepositWithPayload memory depositWithPayload);
 
-    function encodeWormholeDepositWithPayload(WormholeDepositWithPayload memory message)
-        external
-        pure
-        returns (bytes memory);
+    function encodeDepositWithPayload(DepositWithPayload memory message) external pure returns (bytes memory);
 
-    function decodeWormholeDepositWithPayload(bytes memory encoded)
-        external
-        pure
-        returns (WormholeDepositWithPayload memory message);
-
-    function decodeCircleDeposit(bytes memory encoded) external pure returns (CircleDeposit memory message);
+    function decodeDepositWithPayload(bytes memory encoded) external pure returns (DepositWithPayload memory message);
 
     function isInitialized(address impl) external view returns (bool);
 

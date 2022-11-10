@@ -1,23 +1,14 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
-import {
-  CHAIN_ID_AVAX,
-  tryNativeToHexString,
-  tryNativeToUint8Array,
-} from "@certusone/wormhole-sdk";
+import { tryNativeToUint8Array } from "@certusone/wormhole-sdk";
 import {
   AVAX_USDC_TOKEN_ADDRESS,
-  CIRCLE_INTEGRATION_ADDRESS,
   ETH_USDC_TOKEN_ADDRESS,
-  FORK_CHAIN_ID,
   GUARDIAN_PRIVATE_KEY,
   GUARDIAN_SET_INDEX,
   LOCALHOST,
   WALLET_PRIVATE_KEY,
   WORMHOLE_ADDRESS,
-  WORMHOLE_CHAIN_ID,
-  WORMHOLE_GUARDIAN_SET_INDEX,
-  WORMHOLE_MESSAGE_FEE,
 } from "./helpers/consts";
 import {
   IWormhole__factory,
@@ -26,6 +17,7 @@ import {
 import { MockGuardians } from "@certusone/wormhole-sdk/lib/cjs/mock";
 import { MockCircleIntegration, CircleGovernanceEmitter } from "./helpers/mock";
 import { getBlockTimestamp } from "./helpers/utils";
+import * as fs from "fs";
 
 describe("Circle Integration Test", () => {
   const provider = new ethers.providers.StaticJsonRpcProvider(LOCALHOST);
@@ -33,7 +25,7 @@ describe("Circle Integration Test", () => {
 
   const wormhole = IWormhole__factory.connect(WORMHOLE_ADDRESS, provider);
   const circleIntegration = ICircleIntegration__factory.connect(
-    CIRCLE_INTEGRATION_ADDRESS,
+    readCircleIntegrationProxyAddress(5),
     wallet
   );
 
@@ -42,7 +34,7 @@ describe("Circle Integration Test", () => {
   ]);
 
   const foreignCircleIntegration = new MockCircleIntegration(
-    CIRCLE_INTEGRATION_ADDRESS,
+    circleIntegration.address,
     6, // chainId
     1, // domain
     circleIntegration
@@ -163,3 +155,12 @@ describe("Circle Integration Test", () => {
     });
   });
 });
+
+function readCircleIntegrationProxyAddress(chain: number): string {
+  return JSON.parse(
+    fs.readFileSync(
+      `${__dirname}/../../broadcast-test/deploy_contracts.sol/${chain}/run-latest.json`,
+      "utf-8"
+    )
+  ).transactions[2].contractAddress;
+}
