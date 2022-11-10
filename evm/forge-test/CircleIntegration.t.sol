@@ -9,14 +9,13 @@ import {BytesLib} from "wormhole/libraries/external/BytesLib.sol";
 
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 import {ICircleIntegration} from "../src/interfaces/ICircleIntegration.sol";
-import {ICircleBridge} from "../src/interfaces/circle/ICircleBridge.sol";
-import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.sol";
 
 import {CircleIntegrationStructs} from "../src/circle_integration/CircleIntegrationStructs.sol";
+import {CircleIntegrationSetup} from "../src/circle_integration/CircleIntegrationSetup.sol";
 import {CircleIntegrationImplementation} from "../src/circle_integration/CircleIntegrationImplementation.sol";
+import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
 
 import {WormholeSimulator} from "wormhole-forge-sdk/WormholeSimulator.sol";
-import {CircleIntegrationSimulator} from "wormhole-forge-sdk/CircleIntegrationSimulator.sol";
 
 interface IUSDC is IERC20 {
     function mint(address to, uint256 amount) external;
@@ -44,10 +43,6 @@ contract CircleIntegrationTest is Test {
     WormholeSimulator wormholeSimulator;
     IWormhole wormhole;
 
-    ICircleBridge circleBridge;
-    IMessageTransmitter messageTransmitter;
-
-    CircleIntegrationSimulator circleSimulator;
     ICircleIntegration circleIntegration;
 
     // foreign
@@ -87,13 +82,27 @@ contract CircleIntegrationTest is Test {
     }
 
     function setupCircleIntegration() public {
-        circleSimulator = new CircleIntegrationSimulator(
-            address(wormhole),
-            vm.envAddress("TESTING_CIRCLE_BRIDGE_ADDRESS"),
-            uint256(vm.envBytes32("TESTING_DEVNET_GUARDIAN"))
+        // deploy Setup
+        CircleIntegrationSetup setup = new CircleIntegrationSetup();
+
+        // deploy Implementation
+        CircleIntegrationImplementation implementation = new CircleIntegrationImplementation();
+
+        // deploy Proxy
+        CircleIntegrationProxy proxy = new CircleIntegrationProxy(
+            address(setup),
+            abi.encodeWithSelector(
+                bytes4(keccak256("setup(address,address,uint8,address,uint16,bytes32)")),
+                address(implementation),
+                address(wormhole),
+                uint8(1), // finality
+                vm.envAddress("TESTING_CIRCLE_BRIDGE_ADDRESS"), // circleBridge
+                uint16(1),
+                bytes32(0x0000000000000000000000000000000000000000000000000000000000000004)
+            )
         );
-        circleIntegration = circleSimulator.circleIntegration();
-        circleBridge = circleIntegration.circleBridge();
+
+        circleIntegration = ICircleIntegration(address(proxy));
     }
 
     function setUp() public {
