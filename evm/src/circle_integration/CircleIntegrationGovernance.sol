@@ -9,13 +9,13 @@ import {BytesLib} from "wormhole/libraries/external/BytesLib.sol";
 import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
 import {CircleIntegrationGetters} from "./CircleIntegrationGetters.sol";
 import {CircleIntegrationState} from "./CircleIntegrationState.sol";
+import {ICircleIntegration} from "../interfaces/ICircleIntegration.sol";
 
 contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade {
     using BytesLib for bytes;
 
     event ContractUpgraded(address indexed oldContract, address indexed newContract);
     event WormholeFinalityUpdated(uint8 indexed oldLevel, uint8 indexed newFinality);
-    event OwnershipTransfered(address indexed oldOwner, address indexed newOwner);
 
     // "CircleIntegration" (left padded)
     bytes32 constant GOVERNANCE_MODULE = 0x000000000000000000000000000000436972636c65496e746567726174696f6e;
@@ -31,6 +31,9 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
     uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
     uint256 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH = 101;
+
+    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 5;
+    uint256 constant GOVERNANCE_UPGRADE_CONTRACT_LENGTH = 67;
 
     /// @dev updateWormholeFinality serves to change the wormhole messaging consistencyLevel
     function updateWormholeFinality(bytes memory encodedMessage) public {
@@ -122,24 +125,34 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
     }
 
     /// @dev upgrade serves to upgrade contract implementations
-    function upgrade(uint16 chainId_, address newImplementation) public onlyOwner {
-        require(chainId_ == chainId(), "wrong chain");
+    function upgradeContract(bytes memory encodedMessage) public {
+        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_UPGRADE_CONTRACT);
+        require(payload.length == GOVERNANCE_UPGRADE_CONTRACT_LENGTH, "invalid governance payload length");
+
+        // Updating finality should only be relevant for this contract's chain ID
+        require(payload.toUint16(33) == chainId(), "invalid target chain");
 
         address currentImplementation = _getImplementation();
+
+        // newImplementation at byte 35 (32 bytes, but last 20 is the address)
+        address newImplementation = readAddressFromBytes32(payload, 35);
+        {
+            (, bytes memory queried) =
+                newImplementation.staticcall(abi.encodeWithSignature("circleIntegrationImplementation()"));
+            require(queried.length == 32, "invalid implementation");
+            require(
+                abi.decode(queried, (bytes32)) == keccak256("circleIntegrationImplementation()"),
+                "invalid implementation"
+            );
+        }
 
         _upgradeTo(newImplementation);
 
         /// @dev call initialize function of the new implementation
         (bool success, bytes memory reason) = newImplementation.delegatecall(abi.encodeWithSignature("initialize()"));
-
         require(success, string(reason));
 
         emit ContractUpgraded(currentImplementation, newImplementation);
-    }
-
-    modifier onlyOwner() {
-        require(owner() == msg.sender, "caller not the owner");
-        _;
     }
 
     function verifyAndConsumeGovernanceMessage(bytes memory encodedMessage, uint8 action)

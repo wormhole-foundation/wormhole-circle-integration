@@ -19,4 +19,8 @@ contract CircleIntegrationImplementation is CircleIntegration {
 
         _;
     }
+
+    function circleIntegrationImplementation() public pure returns (bytes32) {
+        return keccak256("circleIntegrationImplementation()");
+    }
 }

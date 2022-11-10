@@ -36,7 +36,7 @@ contract CircleIntegrationSimulator is CircleIntegrationMessages {
     constructor(address wormhole_, address circleBridge_, uint256 messageAttester_) {
         circleBridge = ICircleBridge(circleBridge_);
 
-        circleIntegration = deployCircleIntegration(msg.sender, wormhole_);
+        circleIntegration = deployCircleIntegration(wormhole_);
         messageAttesterPK = messageAttester_;
         messageAttester = vm.addr(messageAttesterPK);
 
@@ -75,15 +75,14 @@ contract CircleIntegrationSimulator is CircleIntegrationMessages {
         return abi.encodePacked(r, s, v);
     }
 
-    function deployCircleIntegration(address owner, address wormhole_) internal returns (ICircleIntegration) {
+    function deployCircleIntegration(address wormhole_) internal returns (ICircleIntegration) {
         // deploy Setup
         CircleIntegrationSetup setup = new CircleIntegrationSetup();
 
         // deploy Implementation
         CircleIntegrationImplementation implementation = new CircleIntegrationImplementation();
 
-        // deploy Wormhole
-        vm.prank(owner);
+        // deploy Proxy
         CircleIntegrationProxy proxy = new CircleIntegrationProxy(
             address(setup),
             abi.encodeWithSelector(

@@ -22,7 +22,6 @@ contract CircleIntegrationSetup is CircleIntegrationSetters, ERC1967Upgrade, Con
         require(wormholeAddress != address(0), "invalid wormhole address");
         require(circleBridgeAddress != address(0), "invalid circle bridge address");
 
-        setOwner(_msgSender());
         setWormhole(wormholeAddress);
         setChainId(IWormhole(wormholeAddress).chainId());
         setWormholeFinality(finality);

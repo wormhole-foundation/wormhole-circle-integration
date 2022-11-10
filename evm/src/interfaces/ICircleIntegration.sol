@@ -66,8 +66,6 @@ interface ICircleIntegration {
 
     function decodeCircleDeposit(bytes memory encoded) external pure returns (CircleDeposit memory message);
 
-    function owner() external view returns (address);
-
     function isInitialized(address impl) external view returns (bool);
 
     function wormhole() external view returns (IWormhole);
@@ -107,4 +105,6 @@ interface ICircleIntegration {
     function registerAcceptedToken(bytes memory encodedMessage) external;
 
     function registerTargetChainToken(bytes memory encodedMessage) external;
+
+    function upgradeContract(bytes memory encodedMessage) external;
 }

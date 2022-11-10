@@ -8,10 +8,6 @@ import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol"
 import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
 
 contract CircleIntegrationGetters is CircleIntegrationSetters {
-    function owner() public view returns (address) {
-        return _state.owner;
-    }
-
     function isInitialized(address impl) public view returns (bool) {
         return _state.initializedImplementations[impl];
     }

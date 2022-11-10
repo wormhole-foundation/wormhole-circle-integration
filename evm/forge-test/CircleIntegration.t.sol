@@ -13,9 +13,7 @@ import {ICircleBridge} from "../src/interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.sol";
 
 import {CircleIntegrationStructs} from "../src/circle_integration/CircleIntegrationStructs.sol";
-import {CircleIntegrationSetup} from "../src/circle_integration/CircleIntegrationSetup.sol";
 import {CircleIntegrationImplementation} from "../src/circle_integration/CircleIntegrationImplementation.sol";
-import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
 
 import {WormholeSimulator} from "wormhole-forge-sdk/WormholeSimulator.sol";
 import {CircleIntegrationSimulator} from "wormhole-forge-sdk/CircleIntegrationSimulator.sol";
@@ -35,6 +33,7 @@ contract CircleIntegrationTest is Test {
     uint8 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN = 2;
     uint8 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN = 3;
     uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
+    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 5;
 
     // USDC
     IUSDC usdc;
@@ -785,6 +784,84 @@ contract CircleIntegrationTest is Test {
         assertEq(
             circleIntegration.targetAcceptedToken(sourceToken, targetChain), targetToken, "target token not registered"
         );
+    }
+
+    function testCannotUpgradeContractInvalidImplementation(bytes12 garbage, address newImplementation) public {
+        vm.assume(garbage != bytes12(0));
+        vm.assume(newImplementation != address(0) && !circleIntegration.isInitialized(newImplementation));
+
+        // First attempt to submit garbage implementation
+        {
+            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+                wormholeSimulator.governanceChainId(),
+                wormholeSimulator.governanceContract(),
+                GOVERNANCE_MODULE,
+                GOVERNANCE_UPGRADE_CONTRACT,
+                circleIntegration.chainId(),
+                abi.encodePacked(garbage, newImplementation)
+            );
+
+            // You shall not pass!
+            vm.expectRevert("invalid address");
+            circleIntegration.upgradeContract(encodedMessage);
+        }
+
+        // Now use legitimate-looking ERC20 address
+        {
+            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+                wormholeSimulator.governanceChainId(),
+                wormholeSimulator.governanceContract(),
+                GOVERNANCE_MODULE,
+                GOVERNANCE_UPGRADE_CONTRACT,
+                circleIntegration.chainId(),
+                abi.encodePacked(bytes12(0), newImplementation)
+            );
+
+            // You shall not pass!
+            vm.expectRevert("invalid implementation");
+            circleIntegration.upgradeContract(encodedMessage);
+        }
+
+        // Now use one of Wormhole's implementations
+        {
+            address wormholeImplementation = 0x46DB25598441915D59df8955DD2E4256bC3c6e95;
+
+            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+                wormholeSimulator.governanceChainId(),
+                wormholeSimulator.governanceContract(),
+                GOVERNANCE_MODULE,
+                GOVERNANCE_UPGRADE_CONTRACT,
+                circleIntegration.chainId(),
+                abi.encodePacked(bytes12(0), wormholeImplementation)
+            );
+
+            // You shall not pass!
+            vm.expectRevert("invalid implementation");
+            circleIntegration.upgradeContract(encodedMessage);
+        }
+    }
+
+    function testUpgradeContract() public {
+        // Deploy new implementation.
+        CircleIntegrationImplementation implementation = new CircleIntegrationImplementation();
+
+        // Should not be initialized yet.
+        require(!circleIntegration.isInitialized(address(implementation)), "already initialized");
+
+        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+            wormholeSimulator.governanceChainId(),
+            wormholeSimulator.governanceContract(),
+            GOVERNANCE_MODULE,
+            GOVERNANCE_UPGRADE_CONTRACT,
+            circleIntegration.chainId(),
+            abi.encodePacked(bytes12(0), address(implementation))
+        );
+
+        // Upgrade contract.
+        circleIntegration.upgradeContract(encodedMessage);
+
+        // Should not be initialized yet.
+        require(circleIntegration.isInitialized(address(implementation)), "implementation not initialized");
     }
 
     function testCannotTransferTokensWithPayloadZeroAmount(uint16 targetChain, bytes32 mintRecipient) public {

@@ -4,10 +4,6 @@ pragma solidity ^0.8.13;
 import {CircleIntegrationState} from "./CircleIntegrationState.sol";
 
 contract CircleIntegrationSetters is CircleIntegrationState {
-    function setOwner(address owner_) internal {
-        _state.owner = owner_;
-    }
-
     function setInitialized(address implementatiom) internal {
         _state.initializedImplementations[implementatiom] = true;
     }
