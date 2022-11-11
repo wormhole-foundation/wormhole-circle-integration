@@ -3,39 +3,61 @@ pragma solidity ^0.8.13;
 
 contract CircleIntegrationStorage {
     struct State {
-        // Wormhole chain ID of this contract
+        /// @dev Wormhole chain ID of this contract
         uint16 chainId;
-        // The number of block confirmations needed before the wormhole network
-        // will attest a message.
+
+        /**
+         * @dev The number of block confirmations needed before the wormhole network
+         * will attest a message.
+         */
         uint8 wormholeFinality;
-        // grabbed from Circle's MessageTransmitter
+
+        /// @dev Circle domain for this blockchain (grabbed from Circle's MessageTransmitter)
         uint32 localDomain;
-        // address of the Wormhole contract on this chain
+
+        /// @dev address of the Wormhole contract on this chain
         address wormhole;
-        // guardian governance
+
+        /// @dev Wormhole governance chain ID
         uint16 governanceChainId;
+
+        /// @dev Wormhole governance contract address (bytes32 zero-left-padded)
         bytes32 governanceContract;
-        // address of the trusted Circle Bridge contract on this chain
+
+        /// @dev address of the Circle Bridge contract on this chain
         address circleBridgeAddress;
-        // address of the trusted Circle Message Transmitter on this chain
+
+        /// @dev address of the Circle Message Transmitter on this chain
         address circleTransmitterAddress;
-        // mapping of initialized implementations
+
+        /// @dev mapping of initialized implementation (logic) contracts
         mapping(address => bool) initializedImplementations;
-        // Wormhole chain ID to known emitter address mapping
+
+        /// @dev Wormhole chain ID to known emitter address mapping
         mapping(uint16 => bytes32) registeredEmitters;
-        // Circle Bridge accepted tokens
+
+        /// @dev Circle Bridge accepted token to boolean mapping
         mapping(address => bool) acceptedTokens;
-        // Cricle Bridge accepted token to target chain accepted token
+
+        /**
+         * @dev Circle Bridge accepted token to target chain accepted token
+         * (bytes32 zero-left-padded) mapping.
+         */
         mapping(address => mapping(uint16 => bytes32)) targetAcceptedTokens;
-        // Wormhole chain ID to USDC Chain Domain Mapping
+
+        /// @dev Wormhole chain ID to Circle chain domain mapping
         mapping(uint16 => uint32) chainIdToDomain;
-        // Wormhole chain ID to USDC Chain Domain Mapping
+
+        /// @dev Wormhole chain ID to Circle chain domain mapping
         mapping(uint32 => uint16) domainToChainId;
-        // verified message hash to boolean
+
+        /// @dev verified Wormhole message hash to boolean
         mapping(bytes32 => bool) consumedMessages;
-        // evm chainid
+
+        /// @dev expected EVM chainid
         uint256 evmChain;
-        // storage gap
+
+        /// @dev storage gap for additional state variables in future versions
         uint256[50] ______gap;
     }
 }
