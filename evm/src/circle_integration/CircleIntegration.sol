@@ -142,10 +142,10 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
      * the token burn on the source chain.
      * - `circleAttestation` Serialized EC Signature attesting the cross-chain transfer
      * @return depositInfo Struct containing the following attributes:
-     * - `token` Address (bytes32) of token to be minted
+     * - `token` Address (bytes32 left-zero-padded) of token to be minted
      * - `amount` Amount of tokens to be minted
-     * - `sourceDomain` Circle domain ID for the source chain
-     * - `targetDomain` Circle domain ID for the target chain
+     * - `sourceDomain` Circle domain for the source chain
+     * - `targetDomain` Circle domain for the target chain
      * - `nonce` Circle sequence number for the transfer
      * - `fromAddress` Source CircleIntegration contract caller's address
      * - `mintRecipient` Recipient of minted tokens (must be caller of this contract)
