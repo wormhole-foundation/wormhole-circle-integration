@@ -14,38 +14,61 @@ import {ICircleIntegration} from "../interfaces/ICircleIntegration.sol";
 contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade {
     using BytesLib for bytes;
 
+    /**
+     * @notice Emitted when implementation (logic) contracts are upgraded
+     * @param oldContract Previous implementation contract address
+     * @param newContract New implementation contract address
+     */
     event ContractUpgraded(address indexed oldContract, address indexed newContract);
-    event WormholeFinalityUpdated(uint8 indexed oldLevel, uint8 indexed newFinality);
 
-    // "CircleIntegration" (left padded)
+    /**
+     * @notice Emitted when the Wormhole message finality state variable changes
+     * @param oldFinality Previous `wormholeFinality` value
+     * @param newFinality New `wormholeFinality` value
+     */
+    event WormholeFinalityUpdated(uint8 indexed oldFinality, uint8 indexed newFinality);
+
+    // "CircleIntegration" (left-zero-padded)
     bytes32 constant GOVERNANCE_MODULE = 0x000000000000000000000000000000436972636c65496e746567726174696f6e;
 
+    // for updating `wormholeFinality`
     uint8 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY = 1;
     uint256 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY_LENGTH = 36;
 
+    // for registering an emitter (CircleIntegration contact on other blockchains) and Circle Bridge domain
     uint8 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN = 2;
     uint256 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN_LENGTH = 73;
 
+    // for registering Circle Bridge supported assets on this chain
     uint8 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN = 3;
     uint256 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN_LENGTH = 67;
 
+    // for registering Circle Bridge supported assets on other blockchains
     uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
     uint256 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH = 101;
 
+    // for upgrading implementation (logic) contracts
     uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 5;
     uint256 constant GOVERNANCE_UPGRADE_CONTRACT_LENGTH = 67;
 
-    /// @dev updateWormholeFinality serves to change the wormhole messaging consistencyLevel
+    /**
+     * @notice `updateWormholeFinality` changes the wormhole message consistencyLevel.
+     * @param encodedMessage Attested Wormhole governance message with the following
+     * relevant fields:
+     * - Field Bytes Type Index
+     * - finality 1 uint8 35
+     */
     function updateWormholeFinality(bytes memory encodedMessage) public {
         bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_UPDATE_WORMHOLE_FINALITY);
         require(payload.length == GOVERNANCE_UPDATE_WORMHOLE_FINALITY_LENGTH, "invalid governance payload length");
 
+        // cache the current `wormholeFinality` value
         uint8 currentWormholeFinality = wormholeFinality();
 
-        // Updating finality should only be relevant for this contract's chain ID
+        // updating finality should only be relevant for this contract's chain ID
         require(payload.toUint16(33) == chainId(), "invalid target chain");
 
-        // Finality value at byte 35
+        // parse the new `wormholeFinality` value at byte 35
         uint8 newWormholeFinality = payload.toUint8(35);
         require(newWormholeFinality > 0, "invalid finality");
 
@@ -54,13 +77,21 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         emit WormholeFinalityUpdated(currentWormholeFinality, newWormholeFinality);
     }
 
-    /// @dev registerEmitterAndDomain serves to save trusted emitter contract addresses
-    /// and Circle's chain domain
+    /**
+     * @notice `registerEmitterAndDomain` saves trusted CircleIntegration contract addresses
+     * and Circle's chain domains.
+     * @param encodedMessage Attested Wormhole governance message with the following
+     * relevant fields:
+     * - Field Bytes Type Index
+     * - foreignEmitterChainId 2 uint16 35
+     * - foreignEmitterAddress 32 bytes32 37
+     * - domain 4 uint32 69
+     */
     function registerEmitterAndDomain(bytes memory encodedMessage) public {
         bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN);
         require(payload.length == GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN_LENGTH, "invalid governance payload length");
 
-        // Updating finality should only be relevant for this contract's chain ID
+        // registering emitters should only be relevant for this contract's chain ID
         require(payload.toUint16(33) == chainId(), "invalid target chain");
 
         // emitterChainId at byte 35
@@ -84,13 +115,19 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         setDomainToChainId(domain, emitterChainId);
     }
 
-    /// @dev addAcceptedToken serves to determine which tokens can be burned + minted
-    /// via the Circle Bridge
+    /**
+     * @notice `registerAcceptedToken` registers tokens that can be burned + minted
+     * via the Circle Bridge.
+     * @param encodedMessage Attested Wormhole governance message with the following
+     * relevant fields:
+     * - Field Bytes Type Index
+     * - sourceToken 32 bytes32 35
+     */
     function registerAcceptedToken(bytes memory encodedMessage) public {
         bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_ACCEPTED_TOKEN);
         require(payload.length == GOVERNANCE_REGISTER_ACCEPTED_TOKEN_LENGTH, "invalid governance payload length");
 
-        // Updating finality should only be relevant for this contract's chain ID
+        // registering accepted tokens should only be relevant for this contract's chain ID
         require(payload.toUint16(33) == chainId(), "invalid target chain");
 
         // token at byte 35 (32 bytes, but last 20 is the address)
@@ -101,11 +138,21 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         addAcceptedToken(token);
     }
 
+    /**
+     * @notice `registerTargetChainToken` registers tokens on foreign chains that can be
+     * burned + minted via the Circle Bridge.
+     * @param encodedMessage Attested Wormhole governance message with the following
+     * relevant fields:
+     * - Field Bytes Type Index
+     * - sourceToken 32 bytes32 35
+     * - targetChainId 2 uint16 67
+     * - targetToken 32 bytes32 69
+     */
     function registerTargetChainToken(bytes memory encodedMessage) public {
         bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN);
         require(payload.length == GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH, "invalid governance payload length");
 
-        // Updating finality should only be relevant for this contract's chain ID
+        // registering target chain tokens should only be relevant for this contract's chain ID
         require(payload.toUint16(33) == chainId(), "invalid target chain");
 
         // sourceToken at byte 35 (32 bytes, but last 20 is the address)
@@ -124,12 +171,19 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         addTargetAcceptedToken(sourceToken, targetChain, targetToken);
     }
 
-    /// @dev upgrade serves to upgrade contract implementations
+    /**
+     * @notice `upgradeContract` upgrades the implementation (logic) contract and
+     * initializes the new implementation.
+     * @param encodedMessage Attested Wormhole governance message with the following
+     * relevant fields:
+     * - Field Bytes Type Index
+     * - newImplementation 32 bytes32 35
+     */
     function upgradeContract(bytes memory encodedMessage) public {
         bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_UPGRADE_CONTRACT);
         require(payload.length == GOVERNANCE_UPGRADE_CONTRACT_LENGTH, "invalid governance payload length");
 
-        // Updating finality should only be relevant for this contract's chain ID
+        // contract upgrades should only be relevant for this contract's chain ID
         require(payload.toUint16(33) == chainId(), "invalid target chain");
 
         address currentImplementation = _getImplementation();
@@ -148,7 +202,7 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
         _upgradeTo(newImplementation);
 
-        /// @dev call initialize function of the new implementation
+        // call initialize function of the new implementation
         (bool success, bytes memory reason) = newImplementation.delegatecall(abi.encodeWithSignature("initialize()"));
         require(success, string(reason));
 
@@ -157,32 +211,63 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
     function verifyAndConsumeGovernanceMessage(bytes memory encodedMessage, uint8 action)
         internal
-        returns (bytes memory)
+        returns (bytes memory payload)
     {
+        // verify the governance message
         (bytes32 messageHash, bytes memory payload) = verifyGovernanceMessage(encodedMessage, action);
+
+        // store the hash for replay protection
         consumeMessage(messageHash);
+
         return payload;
     }
 
+    /**
+     * @notice `verifyGovernanceMessage` validates governance messages attested by
+     * Wormhole's network of guardians.
+     * @dev reverts if:
+     * - the EVM blockchain has forked
+     * - the governance message was not attested
+     * - the governance message was generated on the wrong blockchain
+     * - the governance message was already consumed
+     * - the encoded governance module is incorrect
+     * - the encoded governance action is incorrect
+     * @param encodedMessage Attested Wormhole governance message with the following
+     * relevant fields:
+     * - Field Bytes Type Index
+     * - governanceModule 32 bytes32 0
+     * - governanceAction 1 uint8 32
+     * @param action Expected governance action
+     * @return messageHash Wormhole governance message hash
+     * @return payload Verified Wormhole governance message payload
+     */
     function verifyGovernanceMessage(bytes memory encodedMessage, uint8 action)
         public
         view
         returns (bytes32 messageHash, bytes memory payload)
     {
+        // make sure the blockchain has not forked
         require(evmChain() == block.chainid, "invalid evm chain");
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole().parseAndVerifyVM(encodedMessage);
 
+        // verify the governance message
+        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole().parseAndVerifyVM(encodedMessage);
         require(valid, reason);
+
+        // confirm that the governance message was sent from the governance contract
         require(vm.emitterChainId == governanceChainId(), "invalid governance chain");
         require(vm.emitterAddress == governanceContract(), "invalid governance contract");
+
+        // confirm that this governance action has not been consumed already
         require(!isMessageConsumed(vm.hash), "governance action already consumed");
 
-        payload = vm.payload;
         // module at byte 0
-        require(payload.toBytes32(0) == GOVERNANCE_MODULE, "invalid governance module");
-        // action at byte 32
-        require(payload.toUint8(32) == action, "invalid governance action");
+        require(vm.payload.toBytes32(0) == GOVERNANCE_MODULE, "invalid governance module");
 
+        // action at byte 32
+        require(vm.payload.toUint8(32) == action, "invalid governance action");
+
+        // set return values
+        payload = vm.payload;
         messageHash = vm.hash;
     }
 
