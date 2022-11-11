@@ -125,13 +125,13 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // confirm that the caller passed the correct message pair
         require(
             verifyCircleMessage(
-                params.circleMessage, depositInfo.sourceDomain, depositInfo.targetDomain, depositInfo.nonce
+                params.circleBridgeMessage, depositInfo.sourceDomain, depositInfo.targetDomain, depositInfo.nonce
             ),
             "invalid message pair"
         );
 
         // call the circle bridge to mint tokens to the recipient
-        bool success = circleTransmitter().receiveMessage(params.circleMessage, params.circleAttestation);
+        bool success = circleTransmitter().receiveMessage(params.circleBridgeMessage, params.circleAttestation);
         require(success, "failed to mint USDC");
     }
 
