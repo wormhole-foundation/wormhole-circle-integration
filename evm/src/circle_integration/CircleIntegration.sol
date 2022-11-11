@@ -12,15 +12,33 @@ import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 import {CircleIntegrationGovernance} from "./CircleIntegrationGovernance.sol";
 import {CircleIntegrationMessages} from "./CircleIntegrationMessages.sol";
 
-/// @notice These contracts burn and mint USDC by using Circle's Cross-Chain Transfer Protocol allowing
-/// for seemless cross-chain USDC transfers. They also emit Wormhole messages that contain instructions
-/// describing what to do with the USDC on the target chain.
+/**
+ * @notice This contract burns and mints USDC by using Circle's Cross-Chain Transfer Protocol. It also emits
+ * Wormhole messages with arbitrary payloads to allow for additional composability when performing cross-chain
+ * transfers of Circle-suppored assets.
+ */
 contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovernance, ReentrancyGuard {
     using BytesLib for bytes;
 
-    /// @dev `transferTokensWithPayload` calls the Circle Bridge contract to burn USDC. It emits
-    /// a Wormhole message containing a user-specified payload with instructions for what to do with
-    /// the USDC once it has been minted on the target chain.
+    /**
+     * @notice `transferTokensWithPayload` calls the Circle Bridge contract to burn USDC. It emits
+     * a Wormhole message containing a user-specified payload with instructions for what to do with
+     * the Circle-supported assets once they have been minted on the target chain.
+     * @dev reverts if:
+     * - user passes insufficient value to pay Wormhole message fee
+     * - `token` is not supported by Circle Bridge
+     * - `amount` is zero
+     * - `targetChain` is not supported
+     * - `mintRecipient` is bytes32(0)
+     * @param transferParams Struct containing the following attributes:
+     * - `token` Address of the token to be burned
+     * - `amount` Amount of `token` to be burned
+     * - `targetChain` Wormhole chain ID of the target blockchain
+     * - `mintRecipient` The recipient wallet or contract address on the target chain
+     * @param batchId ID for Wormhole message batching
+     * @param payload Arbitrary payload to be delivered to the target chain via Wormhole
+     * @return messageSequence Wormhole sequence number for this contract
+     */
     function transferTokensWithPayload(TransferParameters memory transferParams, uint32 batchId, bytes memory payload)
         public
         payable
@@ -31,17 +49,16 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         IWormhole wormhole = wormhole();
         uint256 wormholeFee = wormhole.messageFee();
 
-        // Confirm that the caller has sent enough ether to pay for the wormhole
-        // message fee.
+        // confirm that the caller has sent enough ether to pay for the wormhole message fee
         require(msg.value == wormholeFee, "insufficient value");
 
-        // Call the circle bridge and depositForBurn. The mintRecipient
-        // should be the target contract composing on this USDC integration.
+        // Call the circle bridge and `depositForBurnWithCaller`. The `mintRecipient`
+        // should be the target contract (or wallet) composing on this contract.
         (bytes32 targetToken, uint64 nonce, uint256 amountReceived) = _transferTokens(
             transferParams.token, transferParams.amount, transferParams.targetChain, transferParams.mintRecipient
         );
 
-        // encode depositForBurn message
+        // encode DepositWithPayload message
         bytes memory encodedMessage = encodeDepositWithPayload(
             DepositWithPayload({
                 token: targetToken,
@@ -55,7 +72,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
             })
         );
 
-        // send the DepositForBurn wormhole message
+        // send the DepositWithPayload wormhole message
         messageSequence = wormhole.publishMessage{value: wormholeFee}(batchId, encodedMessage, wormholeFinality());
     }
 
@@ -69,6 +86,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         require(isAcceptedToken(token), "token not accepted");
         require(getRegisteredEmitter(targetChain) != bytes32(0), "target contract not registered");
 
+        // confirm that the target token was registered
         targetToken = targetAcceptedToken(token, targetChain);
         require(targetToken != bytes32(0), "target token not registered");
 
@@ -78,10 +96,10 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // cache Circle Bridge instance
         ICircleBridge circleBridge = circleBridge();
 
-        // approve the USDC Bridge to spend tokens
+        // approve the Circle Bridge to spend tokens
         SafeERC20.safeApprove(IERC20(token), address(circleBridge), amountReceived);
 
-        // burn USDC on the bridge
+        // burn tokens on the bridge
         nonce = circleBridge.depositForBurnWithCaller(
             amountReceived, getDomainFromChainId(targetChain), mintRecipient, token, getRegisteredEmitter(targetChain)
         );
@@ -93,7 +111,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
             token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
         uint256 balanceBefore = abi.decode(queriedBalanceBefore, (uint256));
 
-        // deposit USDC
+        // deposit tokens
         SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
 
         // query own token balance after transfer
@@ -104,11 +122,35 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         return balanceAfter - balanceBefore;
     }
 
-    /// @dev `redeemTokensWithPayload` verifies the Wormhole message from the source chain and
-    /// verifies that the passed Circle Bridge message is valid. It calls the Circle Bridge
-    /// contract by passing the Circle message and attestation to mint tokens to
-    /// the specified mint recipient. It also verifies that the caller is the specified mint
-    /// recipient to ensure atomic execution of the additional instructions in the Wormhole message.
+    /**
+     * @notice `redeemTokensWithPayload` verifies the Wormhole message from the source chain and
+     * verifies that the passed Circle Bridge message is valid. It calls the Circle Bridge
+     * contract by passing the Circle message and attestation to mint tokens to the specified
+     * mint recipient. It also verifies that the caller is the specified mint recipient to ensure
+     * atomic execution of the additional instructions in the Wormhole message.
+     * @dev reverts if:
+     * - Wormhole message is not properly attested
+     * - Wormhole message was not emitted from a registered contrat
+     * - Wormhole message was already consumed by this contract
+     * - msg.sender is not the encoded mintRecipient
+     * - Circle Bridge message and Wormhole message are not associated
+     * - `receiveMessage` call to Circle Transmitter fails
+     * @param params Struct containing the following attributes:
+     * - `encodedWormholeMessage` Wormhole message emitted by a registered contract including
+     * information regarding the token burn on the source chain and an arbitrary message.
+     * - `circleBridgeMessage` Message emitted by Circle Bridge contract with information regarding
+     * the token burn on the source chain.
+     * - `circleAttestation` Serialized EC Signature attesting the cross-chain transfer
+     * @return depositInfo Struct containing the following attributes:
+     * - `token` Address (bytes32) of token to be minted
+     * - `amount` Amount of tokens to be minted
+     * - `sourceDomain` Circle domain ID for the source chain
+     * - `targetDomain` Circle domain ID for the target chain
+     * - `nonce` Circle sequence number for the transfer
+     * - `fromAddress` Source CircleIntegration contract caller's address
+     * - `mintRecipient` Recipient of minted tokens (must be caller of this contract)
+     * - `payload` Arbitrary Wormhole message payload
+     */
     function redeemTokensWithPayload(RedeemParameters memory params)
         public
         returns (DepositWithPayload memory depositInfo)
@@ -116,10 +158,10 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // verify the wormhole message
         IWormhole.VM memory verifiedMessage = verifyWormholeRedeemMessage(params.encodedWormholeMessage);
 
-        // decode the message payload into the WormholeDeposit struct
+        // decode the message payload into the DepositWithPayload struct
         depositInfo = decodeDepositWithPayload(verifiedMessage.payload);
 
-        // confirm that the caller is the mint recipient to ensure atomic execution
+        // confirm that the caller is the `mintRecipient` to ensure atomic execution
         require(addressToBytes32(msg.sender) == depositInfo.mintRecipient, "caller must be mintRecipient");
 
         // confirm that the caller passed the correct message pair
@@ -165,14 +207,20 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         pure
         returns (bool)
     {
-        // parse the circle bridge message
+        // parse the circle bridge message inline
         uint32 circleSourceDomain = circleMessage.toUint32(4);
         uint32 circleTargetDomain = circleMessage.toUint32(8);
         uint64 circleNonce = circleMessage.toUint64(12);
 
+        // confirm that both the Wormhole message and Circle message share the same transfer info
         return (sourceDomain == circleSourceDomain && targetDomain == circleTargetDomain && nonce == circleNonce);
     }
 
+    /**
+     * @notice Converts type address to bytes32 (left-zero-padded)
+     * @param address_ Address to convert to bytes32
+     * @return Address bytes32
+     */
     function addressToBytes32(address address_) public pure returns (bytes32) {
         return bytes32(uint256(uint160(address_)));
     }
