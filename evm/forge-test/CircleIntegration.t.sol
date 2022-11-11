@@ -9,6 +9,7 @@ import {BytesLib} from "wormhole/libraries/external/BytesLib.sol";
 
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 import {ICircleIntegration} from "../src/interfaces/ICircleIntegration.sol";
+import {IUSDC} from "../src/interfaces/circle/IUSDC.sol";
 
 import {CircleIntegrationStructs} from "../src/circle_integration/CircleIntegrationStructs.sol";
 import {CircleIntegrationSetup} from "../src/circle_integration/CircleIntegrationSetup.sol";
@@ -16,14 +17,6 @@ import {CircleIntegrationImplementation} from "../src/circle_integration/CircleI
 import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
 
 import {WormholeSimulator} from "wormhole-forge-sdk/WormholeSimulator.sol";
-
-interface IUSDC is IERC20 {
-    function mint(address to, uint256 amount) external;
-    function configureMinter(address minter, uint256 minterAllowedAmount) external;
-    function masterMinter() external view returns (address);
-    function owner() external view returns (address);
-    function blacklister() external view returns (address);
-}
 
 contract CircleIntegrationTest is Test {
     using BytesLib for bytes;
