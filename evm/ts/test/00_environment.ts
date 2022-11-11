@@ -5,12 +5,19 @@ import {
   CHAIN_ID_ETH,
   tryNativeToHexString,
 } from "@certusone/wormhole-sdk";
-import { IWormhole__factory } from "../src/ethers-contracts";
 import {
+  ICircleBridge__factory,
+  IMessageTransmitter__factory,
+  IUSDC__factory,
+  IWormhole__factory,
+} from "../src/ethers-contracts";
+import {
+  AVAX_CIRCLE_BRIDGE_ADDRESS,
   AVAX_FORK_CHAIN_ID,
   AVAX_LOCALHOST,
   AVAX_USDC_TOKEN_ADDRESS,
   AVAX_WORMHOLE_ADDRESS,
+  ETH_CIRCLE_BRIDGE_ADDRESS,
   ETH_FORK_CHAIN_ID,
   ETH_LOCALHOST,
   ETH_USDC_TOKEN_ADDRESS,
@@ -38,6 +45,7 @@ describe("Environment Test", () => {
         expect(ETH_FORK_CHAIN_ID).is.not.undefined;
         expect(ETH_WORMHOLE_ADDRESS).is.not.undefined;
         expect(ETH_USDC_TOKEN_ADDRESS).is.not.undefined;
+        expect(ETH_CIRCLE_BRIDGE_ADDRESS).is.not.undefined;
       });
     });
 
@@ -50,7 +58,7 @@ describe("Environment Test", () => {
         provider
       );
 
-      it("Chain ID", async () => {
+      it("EVM Chain ID", async () => {
         const network = await provider.getNetwork();
         expect(network.chainId).to.equal(ETH_FORK_CHAIN_ID);
       });
@@ -133,18 +141,132 @@ describe("Environment Test", () => {
           expect(guardians[0]).to.equal(devnetGuardian);
         }
       });
-    });
 
-    describe("Wormhole SDK", () => {
-      const provider = new ethers.providers.StaticJsonRpcProvider(
-        ETH_LOCALHOST
-      );
-
-      it("tryNativeToHexString", async () => {
+      it("Wormhole SDK", async () => {
         const accounts = await provider.listAccounts();
         expect(tryNativeToHexString(accounts[0], "ethereum")).to.equal(
           "00000000000000000000000090f8bf6a479f320ead074411a4b0e7944ea8c9c1"
         );
+      });
+
+      it("Circle", async () => {
+        const circleBridge = ICircleBridge__factory.connect(
+          ETH_CIRCLE_BRIDGE_ADDRESS,
+          provider
+        );
+        const attesterManager = await circleBridge
+          .localMessageTransmitter()
+          .then((address) =>
+            IMessageTransmitter__factory.connect(address, provider)
+          )
+          .then((messageTransmitter) => messageTransmitter.attesterManager());
+        const myAttester = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, provider);
+
+        // start prank
+        await provider.send("anvil_impersonateAccount", [attesterManager]);
+        const messageTransmitter = await circleBridge
+          .localMessageTransmitter()
+          .then((address) =>
+            IMessageTransmitter__factory.connect(
+              address,
+              provider.getSigner(attesterManager)
+            )
+          );
+        const existingAttester = await messageTransmitter.getEnabledAttester(0);
+
+        // enable devnet guardian as attester
+        {
+          const receipt = await messageTransmitter
+            .enableAttester(myAttester.address)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+        }
+
+        // disable existing attester
+        {
+          const receipt = await messageTransmitter
+            .disableAttester(existingAttester)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+        }
+
+        // stop prank
+        await provider.send("anvil_stopImpersonatingAccount", [
+          attesterManager,
+        ]);
+
+        const attester = await circleBridge
+          .localMessageTransmitter()
+          .then((address) =>
+            IMessageTransmitter__factory.connect(address, provider)
+          )
+          .then((messageTransmitter) =>
+            messageTransmitter.getEnabledAttester(0)
+          );
+        expect(myAttester.address).to.equal(attester);
+      });
+
+      it("USDC", async () => {
+        const masterMinter = await IUSDC__factory.connect(
+          ETH_USDC_TOKEN_ADDRESS,
+          provider
+        ).masterMinter();
+
+        const wallet = new ethers.Wallet(WALLET_PRIVATE_KEY, provider);
+
+        // start prank
+        await provider.send("anvil_impersonateAccount", [masterMinter]);
+
+        // Configure my wallet as minter
+        {
+          const usdc = IUSDC__factory.connect(
+            ETH_USDC_TOKEN_ADDRESS,
+            provider.getSigner(masterMinter)
+          );
+
+          const receipt = await usdc
+            .configureMinter(wallet.address, ethers.constants.MaxUint256)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+        }
+
+        // stop prank
+        await provider.send("anvil_stopImpersonatingAccount", [masterMinter]);
+
+        {
+          const usdc = IUSDC__factory.connect(ETH_USDC_TOKEN_ADDRESS, wallet);
+          const amount = ethers.utils.parseUnits("69420", 6);
+
+          const balanceBefore = await usdc.balanceOf(wallet.address);
+
+          const receipt = await usdc
+            .mint(wallet.address, amount)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+
+          const balanceAfter = await usdc.balanceOf(wallet.address);
+          expect(balanceAfter.sub(balanceBefore).eq(amount)).is.true;
+        }
       });
     });
   });
@@ -156,6 +278,7 @@ describe("Environment Test", () => {
         expect(AVAX_FORK_CHAIN_ID).is.not.undefined;
         expect(AVAX_WORMHOLE_ADDRESS).is.not.undefined;
         expect(AVAX_USDC_TOKEN_ADDRESS).is.not.undefined;
+        expect(AVAX_CIRCLE_BRIDGE_ADDRESS).is.not.undefined;
       });
     });
 
@@ -168,7 +291,7 @@ describe("Environment Test", () => {
         provider
       );
 
-      it("Chain ID", async () => {
+      it("EVM Chain ID", async () => {
         const network = await provider.getNetwork();
         expect(network.chainId).to.equal(AVAX_FORK_CHAIN_ID);
       });
@@ -177,7 +300,7 @@ describe("Environment Test", () => {
         const chainId = await wormhole.chainId();
         expect(chainId).to.equal(CHAIN_ID_AVAX as number);
 
-        const messageFee: ethers.BigNumber = await wormhole.messageFee();
+        const messageFee = await wormhole.messageFee();
         expect(messageFee.eq(WORMHOLE_MESSAGE_FEE)).to.be.true;
 
         // Override guardian set
@@ -251,18 +374,132 @@ describe("Environment Test", () => {
           expect(guardians[0]).to.equal(devnetGuardian);
         }
       });
-    });
 
-    describe("Wormhole SDK", () => {
-      const provider = new ethers.providers.StaticJsonRpcProvider(
-        AVAX_LOCALHOST
-      );
-
-      it("tryNativeToHexString", async () => {
+      it("Wormhole SDK", async () => {
         const accounts = await provider.listAccounts();
         expect(tryNativeToHexString(accounts[0], "ethereum")).to.equal(
           "00000000000000000000000090f8bf6a479f320ead074411a4b0e7944ea8c9c1"
         );
+      });
+
+      it("Circle", async () => {
+        const circleBridge = ICircleBridge__factory.connect(
+          AVAX_CIRCLE_BRIDGE_ADDRESS,
+          provider
+        );
+        const attesterManager = await circleBridge
+          .localMessageTransmitter()
+          .then((address) =>
+            IMessageTransmitter__factory.connect(address, provider)
+          )
+          .then((messageTransmitter) => messageTransmitter.attesterManager());
+        const myAttester = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, provider);
+
+        // start prank
+        await provider.send("anvil_impersonateAccount", [attesterManager]);
+        const messageTransmitter = await circleBridge
+          .localMessageTransmitter()
+          .then((address) =>
+            IMessageTransmitter__factory.connect(
+              address,
+              provider.getSigner(attesterManager)
+            )
+          );
+        const existingAttester = await messageTransmitter.getEnabledAttester(0);
+
+        // enable devnet guardian as attester
+        {
+          const receipt = await messageTransmitter
+            .enableAttester(myAttester.address)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+        }
+
+        // disable existing attester
+        {
+          const receipt = await messageTransmitter
+            .disableAttester(existingAttester)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+        }
+
+        // stop prank
+        await provider.send("anvil_stopImpersonatingAccount", [
+          attesterManager,
+        ]);
+
+        const attester = await circleBridge
+          .localMessageTransmitter()
+          .then((address) =>
+            IMessageTransmitter__factory.connect(address, provider)
+          )
+          .then((messageTransmitter) =>
+            messageTransmitter.getEnabledAttester(0)
+          );
+        expect(myAttester.address).to.equal(attester);
+      });
+
+      it("USDC", async () => {
+        const masterMinter = await IUSDC__factory.connect(
+          AVAX_USDC_TOKEN_ADDRESS,
+          provider
+        ).masterMinter();
+
+        const wallet = new ethers.Wallet(WALLET_PRIVATE_KEY, provider);
+
+        // start prank
+        await provider.send("anvil_impersonateAccount", [masterMinter]);
+
+        // Configure my wallet as minter
+        {
+          const usdc = IUSDC__factory.connect(
+            AVAX_USDC_TOKEN_ADDRESS,
+            provider.getSigner(masterMinter)
+          );
+
+          const receipt = await usdc
+            .configureMinter(wallet.address, ethers.constants.MaxUint256)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+        }
+
+        // stop prank
+        await provider.send("anvil_stopImpersonatingAccount", [masterMinter]);
+
+        {
+          const usdc = IUSDC__factory.connect(AVAX_USDC_TOKEN_ADDRESS, wallet);
+          const amount = ethers.utils.parseUnits("69420", 6);
+
+          const balanceBefore = await usdc.balanceOf(wallet.address);
+
+          const receipt = await usdc
+            .mint(wallet.address, amount)
+            .then((tx) => tx.wait())
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+
+          const balanceAfter = await usdc.balanceOf(wallet.address);
+          expect(balanceAfter.sub(balanceBefore).eq(amount)).is.true;
+        }
       });
     });
   });

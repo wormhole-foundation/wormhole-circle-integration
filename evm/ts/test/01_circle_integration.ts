@@ -1,14 +1,20 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
-import { tryNativeToUint8Array } from "@certusone/wormhole-sdk";
+import {
+  tryNativeToHexString,
+  tryNativeToUint8Array,
+} from "@certusone/wormhole-sdk";
 import {
   AVAX_USDC_TOKEN_ADDRESS,
   ETH_USDC_TOKEN_ADDRESS,
   GUARDIAN_PRIVATE_KEY,
-  GUARDIAN_SET_INDEX,
-  LOCALHOST,
+  WORMHOLE_GUARDIAN_SET_INDEX,
+  ETH_LOCALHOST,
   WALLET_PRIVATE_KEY,
-  WORMHOLE_ADDRESS,
+  ETH_WORMHOLE_ADDRESS,
+  AVAX_LOCALHOST,
+  ETH_FORK_CHAIN_ID,
+  AVAX_FORK_CHAIN_ID,
 } from "./helpers/consts";
 import {
   IWormhole__factory,
@@ -16,130 +22,242 @@ import {
 } from "../src/ethers-contracts";
 import { MockGuardians } from "@certusone/wormhole-sdk/lib/cjs/mock";
 import { MockCircleIntegration, CircleGovernanceEmitter } from "./helpers/mock";
-import { getBlockTimestamp } from "./helpers/utils";
+import { getTimeNow } from "./helpers/utils";
 import * as fs from "fs";
 
 describe("Circle Integration Test", () => {
-  const provider = new ethers.providers.StaticJsonRpcProvider(LOCALHOST);
-  const wallet = new ethers.Wallet(WALLET_PRIVATE_KEY, provider);
-
-  const wormhole = IWormhole__factory.connect(WORMHOLE_ADDRESS, provider);
-  const circleIntegration = ICircleIntegration__factory.connect(
-    readCircleIntegrationProxyAddress(5),
-    wallet
+  // ethereum
+  const ethProvider = new ethers.providers.StaticJsonRpcProvider(ETH_LOCALHOST);
+  const ethWallet = new ethers.Wallet(WALLET_PRIVATE_KEY, ethProvider);
+  const ethCircleIntegration = ICircleIntegration__factory.connect(
+    readCircleIntegrationProxyAddress(ETH_FORK_CHAIN_ID),
+    ethWallet
   );
 
-  const guardians = new MockGuardians(GUARDIAN_SET_INDEX, [
+  // avalanche
+  const avaxProvider = new ethers.providers.StaticJsonRpcProvider(
+    AVAX_LOCALHOST
+  );
+  const avaxWallet = new ethers.Wallet(WALLET_PRIVATE_KEY, avaxProvider);
+  const avaxCircleIntegration = ICircleIntegration__factory.connect(
+    readCircleIntegrationProxyAddress(AVAX_FORK_CHAIN_ID),
+    avaxWallet
+  );
+
+  // global
+  const guardians = new MockGuardians(WORMHOLE_GUARDIAN_SET_INDEX, [
     GUARDIAN_PRIVATE_KEY,
   ]);
 
-  const foreignCircleIntegration = new MockCircleIntegration(
-    circleIntegration.address,
-    6, // chainId
-    1, // domain
-    circleIntegration
-  );
-
-  describe("Circle Integration Registrations", () => {
+  describe("Registrations", () => {
     const governance = new CircleGovernanceEmitter();
 
-    it("Register Foreign Circle Integration", async () => {
-      const timestamp = await getBlockTimestamp(provider);
-      const chainId = await circleIntegration.chainId();
+    describe("Ethereum Goerli Testnet", () => {
+      it("Register Foreign Circle Integration", async () => {
+        const timestamp = getTimeNow();
+        const chainId = await ethCircleIntegration.chainId();
 
-      const published =
-        governance.publishCircleIntegrationRegisterEmitterAndDomain(
-          timestamp,
-          chainId,
-          foreignCircleIntegration.chain,
-          foreignCircleIntegration.address,
-          foreignCircleIntegration.domain
+        const emitterChain = await avaxCircleIntegration.chainId();
+        const emitterAddress = Buffer.from(
+          tryNativeToUint8Array(avaxCircleIntegration.address, "avalanche")
         );
-      const signedMessage = guardians.addSignatures(published, [0]);
+        const domain = await avaxCircleIntegration.localDomain();
 
-      const receipt = await circleIntegration
-        .registerEmitterAndDomain(signedMessage)
-        .then((tx) => tx.wait())
-        .catch((msg) => {
-          // should not happen
-          console.log(msg.error.reason);
-          return null;
-        });
-      expect(receipt).is.not.null;
+        const published =
+          governance.publishCircleIntegrationRegisterEmitterAndDomain(
+            timestamp,
+            chainId,
+            emitterChain,
+            emitterAddress,
+            domain
+          );
+        const signedMessage = guardians.addSignatures(published, [0]);
 
-      // check state
-      const registeredEmitter = await circleIntegration
-        .getRegisteredEmitter(foreignCircleIntegration.chain)
-        .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
-      expect(
-        Buffer.compare(registeredEmitter, foreignCircleIntegration.address)
-      ).to.equal(0);
-    });
+        const receipt = await ethCircleIntegration
+          .registerEmitterAndDomain(signedMessage)
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
 
-    it("Register Accepted Token", async () => {
-      const timestamp = await getBlockTimestamp(provider);
-      const chainId = await circleIntegration.chainId();
+        // check state
+        const registeredEmitter = await ethCircleIntegration
+          .getRegisteredEmitter(emitterChain)
+          .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
+        expect(Buffer.compare(registeredEmitter, emitterAddress)).to.equal(0);
+      });
 
-      const published =
-        governance.publishCircleIntegrationRegisterAcceptedToken(
-          timestamp,
-          chainId,
+      it("Register Accepted Token", async () => {
+        const timestamp = getTimeNow();
+        const chainId = await ethCircleIntegration.chainId();
+
+        const published =
+          governance.publishCircleIntegrationRegisterAcceptedToken(
+            timestamp,
+            chainId,
+            ETH_USDC_TOKEN_ADDRESS
+          );
+        const signedMessage = guardians.addSignatures(published, [0]);
+
+        const receipt = await ethCircleIntegration
+          .registerAcceptedToken(signedMessage)
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check state
+        const accepted = await ethCircleIntegration.isAcceptedToken(
           ETH_USDC_TOKEN_ADDRESS
         );
-      const signedMessage = guardians.addSignatures(published, [0]);
+        expect(accepted).is.true;
+      });
 
-      const receipt = await circleIntegration
-        .registerAcceptedToken(signedMessage)
-        .then((tx) => tx.wait())
-        .catch((msg) => {
-          // should not happen
-          console.log(msg.error.reason);
-          return null;
-        });
-      expect(receipt).is.not.null;
+      it("Register Target Chain Token", async () => {
+        const timestamp = getTimeNow();
+        const chainId = await ethCircleIntegration.chainId();
 
-      // check state
-      const accepted = await circleIntegration.isAcceptedToken(
-        ETH_USDC_TOKEN_ADDRESS
-      );
-      expect(accepted).is.true;
+        const targetChain = await avaxCircleIntegration.chainId();
+        const targetToken = Buffer.from(
+          tryNativeToUint8Array(AVAX_USDC_TOKEN_ADDRESS, "avalanche")
+        );
+
+        const published =
+          governance.publishCircleIntegrationRegisterTargetChainToken(
+            timestamp,
+            chainId,
+            ETH_USDC_TOKEN_ADDRESS,
+            targetChain,
+            targetToken
+          );
+        const signedMessage = guardians.addSignatures(published, [0]);
+
+        const receipt = await ethCircleIntegration
+          .registerTargetChainToken(signedMessage)
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check state
+        const registeredTargetToken = await ethCircleIntegration
+          .targetAcceptedToken(ETH_USDC_TOKEN_ADDRESS, targetChain)
+          .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
+        expect(Buffer.compare(registeredTargetToken, targetToken)).to.equal(0);
+      });
     });
 
-    it("Register Target Chain Token", async () => {
-      const timestamp = await getBlockTimestamp(provider);
-      const chainId = await circleIntegration.chainId();
-      const targetToken = Buffer.from(
-        tryNativeToUint8Array(AVAX_USDC_TOKEN_ADDRESS, "avalanche")
-      );
+    describe("Avalanche Fuji Testnet", () => {
+      it("Register Foreign Circle Integration", async () => {
+        const timestamp = getTimeNow();
+        const chainId = await avaxCircleIntegration.chainId();
 
-      const published =
-        governance.publishCircleIntegrationRegisterTargetChainToken(
-          timestamp,
-          chainId,
-          ETH_USDC_TOKEN_ADDRESS,
-          foreignCircleIntegration.chain,
-          targetToken
+        const emitterChain = await ethCircleIntegration.chainId();
+        const emitterAddress = Buffer.from(
+          tryNativeToUint8Array(ethCircleIntegration.address, "avalanche")
         );
-      const signedMessage = guardians.addSignatures(published, [0]);
+        const domain = await ethCircleIntegration.localDomain();
 
-      const receipt = await circleIntegration
-        .registerTargetChainToken(signedMessage)
-        .then((tx) => tx.wait())
-        .catch((msg) => {
-          // should not happen
-          console.log(msg.error.reason);
-          return null;
-        });
-      expect(receipt).is.not.null;
+        const published =
+          governance.publishCircleIntegrationRegisterEmitterAndDomain(
+            timestamp,
+            chainId,
+            emitterChain,
+            emitterAddress,
+            domain
+          );
+        const signedMessage = guardians.addSignatures(published, [0]);
 
-      // check state
-      const registeredTargetToken = await circleIntegration
-        .targetAcceptedToken(
-          ETH_USDC_TOKEN_ADDRESS,
-          foreignCircleIntegration.chain
-        )
-        .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
-      expect(Buffer.compare(registeredTargetToken, targetToken)).to.equal(0);
+        const receipt = await avaxCircleIntegration
+          .registerEmitterAndDomain(signedMessage)
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check state
+        const registeredEmitter = await avaxCircleIntegration
+          .getRegisteredEmitter(emitterChain)
+          .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
+        expect(Buffer.compare(registeredEmitter, emitterAddress)).to.equal(0);
+      });
+
+      it("Register Accepted Token", async () => {
+        const timestamp = getTimeNow();
+        const chainId = await avaxCircleIntegration.chainId();
+
+        const published =
+          governance.publishCircleIntegrationRegisterAcceptedToken(
+            timestamp,
+            chainId,
+            AVAX_USDC_TOKEN_ADDRESS
+          );
+        const signedMessage = guardians.addSignatures(published, [0]);
+
+        const receipt = await avaxCircleIntegration
+          .registerAcceptedToken(signedMessage)
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check state
+        const accepted = await avaxCircleIntegration.isAcceptedToken(
+          AVAX_USDC_TOKEN_ADDRESS
+        );
+        expect(accepted).is.true;
+      });
+
+      it("Register Target Chain Token", async () => {
+        const timestamp = getTimeNow();
+        const chainId = await avaxCircleIntegration.chainId();
+
+        const targetChain = await ethCircleIntegration.chainId();
+        const targetToken = Buffer.from(
+          tryNativeToUint8Array(ETH_USDC_TOKEN_ADDRESS, "avalanche")
+        );
+
+        const published =
+          governance.publishCircleIntegrationRegisterTargetChainToken(
+            timestamp,
+            chainId,
+            AVAX_USDC_TOKEN_ADDRESS,
+            targetChain,
+            targetToken
+          );
+        const signedMessage = guardians.addSignatures(published, [0]);
+
+        const receipt = await avaxCircleIntegration
+          .registerTargetChainToken(signedMessage)
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check state
+        const registeredTargetToken = await avaxCircleIntegration
+          .targetAcceptedToken(AVAX_USDC_TOKEN_ADDRESS, targetChain)
+          .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
+        expect(Buffer.compare(registeredTargetToken, targetToken)).to.equal(0);
+      });
     });
   });
 
