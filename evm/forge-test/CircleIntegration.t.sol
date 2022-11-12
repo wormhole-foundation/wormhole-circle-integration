@@ -162,7 +162,7 @@ contract CircleIntegrationTest is Test {
         bytes32 fromAddress,
         bytes32 mintRecipient,
         bytes memory payload
-    ) public {
+    ) public view {
         vm.assume(token != bytes32(0));
         vm.assume(amount > 0);
         vm.assume(targetDomain != sourceDomain);
@@ -270,7 +270,7 @@ contract CircleIntegrationTest is Test {
         bytes32 fromAddress,
         bytes32 mintRecipient,
         bytes memory payload
-    ) public {
+    ) public view {
         vm.assume(token != bytes32(0));
         vm.assume(amount > 0);
         vm.assume(targetDomain != sourceDomain);

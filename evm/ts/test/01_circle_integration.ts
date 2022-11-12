@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "ethers";
 import {
-  tryNativeToHexString,
+  CHAIN_ID_AVAX,
+  CHAIN_ID_ETH,
   tryNativeToUint8Array,
 } from "@certusone/wormhole-sdk";
 import {
@@ -11,19 +12,25 @@ import {
   WORMHOLE_GUARDIAN_SET_INDEX,
   ETH_LOCALHOST,
   WALLET_PRIVATE_KEY,
-  ETH_WORMHOLE_ADDRESS,
   AVAX_LOCALHOST,
   ETH_FORK_CHAIN_ID,
   AVAX_FORK_CHAIN_ID,
 } from "./helpers/consts";
 import {
-  IWormhole__factory,
   ICircleIntegration__factory,
+  IUSDC__factory,
 } from "../src/ethers-contracts";
 import { MockGuardians } from "@certusone/wormhole-sdk/lib/cjs/mock";
-import { MockCircleIntegration, CircleGovernanceEmitter } from "./helpers/mock";
-import { getTimeNow } from "./helpers/utils";
-import * as fs from "fs";
+import { RedeemParameters, TransferParameters } from "../src";
+import { findCircleMessageInLogs } from "../src/logs";
+
+import { CircleGovernanceEmitter } from "./helpers/mock";
+import {
+  getTimeNow,
+  MockCircleAttester,
+  readCircleIntegrationProxyAddress,
+  findWormholeMessageInLogs,
+} from "./helpers/utils";
 
 describe("Circle Integration Test", () => {
   // ethereum
@@ -33,6 +40,7 @@ describe("Circle Integration Test", () => {
     readCircleIntegrationProxyAddress(ETH_FORK_CHAIN_ID),
     ethWallet
   );
+  const ethUsdc = IUSDC__factory.connect(ETH_USDC_TOKEN_ADDRESS, ethWallet);
 
   // avalanche
   const avaxProvider = new ethers.providers.StaticJsonRpcProvider(
@@ -43,11 +51,13 @@ describe("Circle Integration Test", () => {
     readCircleIntegrationProxyAddress(AVAX_FORK_CHAIN_ID),
     avaxWallet
   );
+  const avaxUsdc = IUSDC__factory.connect(AVAX_USDC_TOKEN_ADDRESS, avaxWallet);
 
   // global
   const guardians = new MockGuardians(WORMHOLE_GUARDIAN_SET_INDEX, [
     GUARDIAN_PRIVATE_KEY,
   ]);
+  const circleAttester = new MockCircleAttester(GUARDIAN_PRIVATE_KEY);
 
   describe("Registrations", () => {
     const governance = new CircleGovernanceEmitter();
@@ -262,23 +272,111 @@ describe("Circle Integration Test", () => {
   });
 
   describe("ETH -> AVAX", () => {
+    const amount = ethers.BigNumber.from("69");
+
+    let localVariables: any = {};
+
     it("transferWithPayload", async () => {
-      // TODO
+      const params: TransferParameters = {
+        token: ETH_USDC_TOKEN_ADDRESS,
+        amount,
+        targetChain: CHAIN_ID_AVAX as number,
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "avalanche"),
+      };
+      const batchId = 0;
+      const payload = Buffer.from("All your base are belong to us.");
+
+      // increase allowance
+      {
+        const receipt = await ethUsdc
+          .approve(ethCircleIntegration.address, amount)
+          .then((tx) => tx.wait());
+      }
+
+      const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
+
+      const receipt = await ethCircleIntegration
+        .transferTokensWithPayload(params, batchId, payload)
+        .then(async (tx) => {
+          const receipt = await tx.wait();
+          return receipt;
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
+      expect(balanceBefore.sub(balanceAfter).eq(amount)).is.true;
+
+      // Grab Circle message from logs
+      const circleMessage = await ethCircleIntegration
+        .circleTransmitter()
+        .then((address) => findCircleMessageInLogs(receipt!.logs, address));
+      expect(circleMessage).is.not.null;
+
+      // Grab attestation
+      const circleAttestation = circleAttester.attestMessage(
+        ethers.utils.arrayify(circleMessage!)
+      );
+
+      // Now grab the Wormhole Message
+      const wormholeMessage = await ethCircleIntegration
+        .wormhole()
+        .then((address) =>
+          findWormholeMessageInLogs(
+            receipt!.logs,
+            address,
+            CHAIN_ID_ETH as number
+          )
+        );
+      expect(wormholeMessage).is.not.null;
+
+      const encodedWormholeMessage = Uint8Array.from(
+        guardians.addSignatures(wormholeMessage!, [0])
+      );
+
+      localVariables.circleBridgeMessage = circleMessage!;
+      localVariables.circleAttestation = circleAttestation!;
+      localVariables.encodedWormholeMessage = encodedWormholeMessage;
+    });
+
+    it("redeemWithPayload", async () => {
+      const redeemParameters: RedeemParameters = {
+        circleBridgeMessage: localVariables.circleBridgeMessage!,
+        circleAttestation: localVariables.circleAttestation!,
+        encodedWormholeMessage: localVariables.encodedWormholeMessage!,
+      };
+
+      const balanceBefore = await avaxUsdc.balanceOf(avaxWallet.address);
+
+      const receipt = await avaxCircleIntegration
+        .redeemTokensWithPayload(redeemParameters)
+        .then(async (tx) => {
+          const receipt = await tx.wait();
+          return receipt;
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
+      expect(balanceAfter.sub(balanceBefore).eq(amount)).is.true;
     });
   });
 
   describe("AVAX -> ETH", () => {
+    it("transferWithPayload", async () => {
+      // TODO
+    });
+
     it("redeemWithPayload", async () => {
       // TODO
     });
   });
 });
-
-function readCircleIntegrationProxyAddress(chain: number): string {
-  return JSON.parse(
-    fs.readFileSync(
-      `${__dirname}/../../broadcast-test/deploy_contracts.sol/${chain}/run-latest.json`,
-      "utf-8"
-    )
-  ).transactions[2].contractAddress;
-}
