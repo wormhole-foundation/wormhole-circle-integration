@@ -4,6 +4,7 @@ optimizer = true
 optimizer_runs = 200
 
 test = "forge-test"
+broadcast = "broadcast-test"
 
 libs = [
     "lib",

@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import {ethers} from "ethers";
 
 // ethereum goerli testnet fork
 export const ETH_LOCALHOST = "http://localhost:8545";
@@ -24,3 +24,4 @@ export const WORMHOLE_GUARDIAN_SET_INDEX = Number(
 );
 export const GUARDIAN_PRIVATE_KEY = process.env.TESTING_DEVNET_GUARDIAN!;
 export const WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY!;
+export const WALLET_PRIVATE_KEY_TWO = process.env.WALLET_PRIVATE_KEY_TWO!;

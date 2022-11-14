@@ -132,7 +132,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
 
         // call the circle bridge to mint tokens to the recipient
         bool success = circleTransmitter().receiveMessage(params.circleBridgeMessage, params.circleAttestation);
-        require(success, "failed to mint USDC");
+        require(success, "CIRCLE_INTEGRATION: failed to mint tokens");
     }
 
     function verifyWormholeRedeemMessage(bytes memory encodedMessage) internal returns (IWormhole.VM memory) {

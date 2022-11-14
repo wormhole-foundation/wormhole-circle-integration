@@ -1,5 +1,5 @@
-import { expect } from "chai";
-import { ethers } from "ethers";
+import {expect} from "chai";
+import {ethers} from "ethers";
 import {
   CHAIN_ID_AVAX,
   CHAIN_ID_ETH,
@@ -248,6 +248,7 @@ describe("Environment Test", () => {
         // stop prank
         await provider.send("anvil_stopImpersonatingAccount", [masterMinter]);
 
+        // mint USDC and confirm with a balance check
         {
           const usdc = IUSDC__factory.connect(ETH_USDC_TOKEN_ADDRESS, wallet);
           const amount = ethers.utils.parseUnits("69420", 6);
@@ -481,6 +482,7 @@ describe("Environment Test", () => {
         // stop prank
         await provider.send("anvil_stopImpersonatingAccount", [masterMinter]);
 
+        // mint USDC and confirm with a balance check
         {
           const usdc = IUSDC__factory.connect(AVAX_USDC_TOKEN_ADDRESS, wallet);
           const amount = ethers.utils.parseUnits("69420", 6);

@@ -1,6 +1,7 @@
-import { expect } from "chai";
-import { ethers } from "ethers";
+import {expect} from "chai";
+import {ethers} from "ethers";
 import {
+  CHAIN_ID_ALGORAND,
   CHAIN_ID_AVAX,
   CHAIN_ID_ETH,
   tryNativeToUint8Array,
@@ -12,6 +13,7 @@ import {
   WORMHOLE_GUARDIAN_SET_INDEX,
   ETH_LOCALHOST,
   WALLET_PRIVATE_KEY,
+  WALLET_PRIVATE_KEY_TWO,
   AVAX_LOCALHOST,
   ETH_FORK_CHAIN_ID,
   AVAX_FORK_CHAIN_ID,
@@ -20,11 +22,11 @@ import {
   ICircleIntegration__factory,
   IUSDC__factory,
 } from "../src/ethers-contracts";
-import { MockGuardians } from "@certusone/wormhole-sdk/lib/cjs/mock";
-import { RedeemParameters, TransferParameters } from "../src";
-import { findCircleMessageInLogs } from "../src/logs";
+import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
+import {RedeemParameters, TransferParameters} from "../src";
+import {findCircleMessageInLogs} from "../src/logs";
 
-import { CircleGovernanceEmitter } from "./helpers/mock";
+import {CircleGovernanceEmitter} from "./helpers/mock";
 import {
   getTimeNow,
   MockCircleAttester,
@@ -63,7 +65,7 @@ describe("Circle Integration Test", () => {
     const governance = new CircleGovernanceEmitter();
 
     describe("Ethereum Goerli Testnet", () => {
-      it("Register Foreign Circle Integration", async () => {
+      it("Should Register Foreign Circle Integration", async () => {
         const timestamp = getTimeNow();
         const chainId = await ethCircleIntegration.chainId();
 
@@ -100,7 +102,7 @@ describe("Circle Integration Test", () => {
         expect(Buffer.compare(registeredEmitter, emitterAddress)).to.equal(0);
       });
 
-      it("Register Accepted Token", async () => {
+      it("Should Register Accepted Token", async () => {
         const timestamp = getTimeNow();
         const chainId = await ethCircleIntegration.chainId();
 
@@ -129,7 +131,7 @@ describe("Circle Integration Test", () => {
         expect(accepted).is.true;
       });
 
-      it("Register Target Chain Token", async () => {
+      it("Should Register Target Chain Token", async () => {
         const timestamp = getTimeNow();
         const chainId = await ethCircleIntegration.chainId();
 
@@ -167,7 +169,7 @@ describe("Circle Integration Test", () => {
     });
 
     describe("Avalanche Fuji Testnet", () => {
-      it("Register Foreign Circle Integration", async () => {
+      it("Should Register Foreign Circle Integration", async () => {
         const timestamp = getTimeNow();
         const chainId = await avaxCircleIntegration.chainId();
 
@@ -204,7 +206,7 @@ describe("Circle Integration Test", () => {
         expect(Buffer.compare(registeredEmitter, emitterAddress)).to.equal(0);
       });
 
-      it("Register Accepted Token", async () => {
+      it("Should Register Accepted Token", async () => {
         const timestamp = getTimeNow();
         const chainId = await avaxCircleIntegration.chainId();
 
@@ -233,7 +235,7 @@ describe("Circle Integration Test", () => {
         expect(accepted).is.true;
       });
 
-      it("Register Target Chain Token", async () => {
+      it("Should Register Target Chain Token", async () => {
         const timestamp = getTimeNow();
         const chainId = await avaxCircleIntegration.chainId();
 
@@ -271,30 +273,34 @@ describe("Circle Integration Test", () => {
     });
   });
 
-  describe("ETH -> AVAX", () => {
-    const amount = ethers.BigNumber.from("69");
+  describe("Transfer With Payload Logic", () => {
+    const amountFromEth = ethers.BigNumber.from("69");
+    const amountFromAvax = ethers.BigNumber.from("420");
 
     let localVariables: any = {};
 
-    it("transferWithPayload", async () => {
+    it("Should Transfer Tokens With Payload On Ethereum", async () => {
+      // define transferTokensWithPayload function arguments
       const params: TransferParameters = {
         token: ETH_USDC_TOKEN_ADDRESS,
-        amount,
+        amount: amountFromEth,
         targetChain: CHAIN_ID_AVAX as number,
         mintRecipient: tryNativeToUint8Array(ethWallet.address, "avalanche"),
       };
-      const batchId = 0;
+      const batchId = 0; // opt out of batching
       const payload = Buffer.from("All your base are belong to us.");
 
       // increase allowance
       {
         const receipt = await ethUsdc
-          .approve(ethCircleIntegration.address, amount)
+          .approve(ethCircleIntegration.address, amountFromEth)
           .then((tx) => tx.wait());
       }
 
+      // grab USDC balance before performing the transfer
       const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
 
+      // call transferTokensWithPayload
       const receipt = await ethCircleIntegration
         .transferTokensWithPayload(params, batchId, payload)
         .then(async (tx) => {
@@ -308,8 +314,9 @@ describe("Circle Integration Test", () => {
         });
       expect(receipt).is.not.null;
 
+      // check USDC balance after to confirm the transfer worked
       const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
-      expect(balanceBefore.sub(balanceAfter).eq(amount)).is.true;
+      expect(balanceBefore.sub(balanceAfter).eq(amountFromEth)).is.true;
 
       // Grab Circle message from logs
       const circleMessage = await ethCircleIntegration
@@ -343,7 +350,7 @@ describe("Circle Integration Test", () => {
       localVariables.encodedWormholeMessage = encodedWormholeMessage;
     });
 
-    it("redeemWithPayload", async () => {
+    it("Should Redeem Tokens With Payload On Avax", async () => {
       const redeemParameters: RedeemParameters = {
         circleBridgeMessage: localVariables.circleBridgeMessage!,
         circleAttestation: localVariables.circleAttestation!,
@@ -365,18 +372,650 @@ describe("Circle Integration Test", () => {
         });
       expect(receipt).is.not.null;
 
+      // save all of the redeem parameters
       const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
-      expect(balanceAfter.sub(balanceBefore).eq(amount)).is.true;
-    });
-  });
-
-  describe("AVAX -> ETH", () => {
-    it("transferWithPayload", async () => {
-      // TODO
+      expect(balanceAfter.sub(balanceBefore).eq(amountFromEth)).is.true;
     });
 
-    it("redeemWithPayload", async () => {
-      // TODO
+    it("Should Transfer Tokens With Payload On Avax", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: AVAX_USDC_TOKEN_ADDRESS,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Send me back to Ethereum!");
+
+      // increase allowance
+      {
+        const receipt = await avaxUsdc
+          .approve(avaxCircleIntegration.address, amountFromAvax)
+          .then((tx) => tx.wait());
+      }
+
+      // grab USDC balance before performing the transfer
+      const balanceBefore = await avaxUsdc.balanceOf(avaxWallet.address);
+
+      // call transferTokensWithPayload
+      const receipt = await avaxCircleIntegration
+        .transferTokensWithPayload(params, batchId, payload)
+        .then(async (tx) => {
+          const receipt = await tx.wait();
+          return receipt;
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      // check USDC balance after to confirm the transfer worked
+      const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
+      expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
+
+      // Grab Circle message from logs
+      const circleMessage = await avaxCircleIntegration
+        .circleTransmitter()
+        .then((address) => findCircleMessageInLogs(receipt!.logs, address));
+      expect(circleMessage).is.not.null;
+
+      // Grab attestation
+      const circleAttestation = circleAttester.attestMessage(
+        ethers.utils.arrayify(circleMessage!)
+      );
+
+      // Now grab the Wormhole Message
+      const wormholeMessage = await avaxCircleIntegration
+        .wormhole()
+        .then((address) =>
+          findWormholeMessageInLogs(
+            receipt!.logs,
+            address,
+            CHAIN_ID_AVAX as number
+          )
+        );
+      expect(wormholeMessage).is.not.null;
+
+      const encodedWormholeMessage = Uint8Array.from(
+        guardians.addSignatures(wormholeMessage!, [0])
+      );
+
+      // save all of the redeem parameters
+      localVariables.circleBridgeMessage = circleMessage!;
+      localVariables.circleAttestation = circleAttestation!;
+      localVariables.encodedWormholeMessage = encodedWormholeMessage;
+    });
+
+    it("Should Redeem Tokens With Payload On Ethereum", async () => {
+      const redeemParameters: RedeemParameters = {
+        circleBridgeMessage: localVariables.circleBridgeMessage!,
+        circleAttestation: localVariables.circleAttestation!,
+        encodedWormholeMessage: localVariables.encodedWormholeMessage!,
+      };
+
+      const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
+
+      const receipt = await ethCircleIntegration
+        .redeemTokensWithPayload(redeemParameters)
+        .then(async (tx) => {
+          const receipt = await tx.wait();
+          return receipt;
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      // save all of the redeem parameters
+      const balanceAfter = await ethUsdc.balanceOf(avaxWallet.address);
+      expect(balanceAfter.sub(balanceBefore).eq(amountFromAvax)).is.true;
+    });
+
+    it("Should Not Redeem a Transfer More Than Once", async () => {
+      const redeemParameters: RedeemParameters = {
+        circleBridgeMessage: localVariables.circleBridgeMessage!,
+        circleAttestation: localVariables.circleAttestation!,
+        encodedWormholeMessage: localVariables.encodedWormholeMessage!,
+      };
+
+      // balance before calling redeemTokensWithPayload
+      const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
+
+      // try to submit a new guardian set including the zero address
+      let failed: boolean = false;
+      try {
+        const receipt = await ethCircleIntegration
+          .redeemTokensWithPayload(redeemParameters)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          });
+        expect(receipt).is.not.null;
+      } catch (e: any) {
+        expect(e.error.reason, "execution reverted: message already consumed")
+          .to.be.equal;
+        failed = true;
+      }
+
+      // confirm that the call failed
+      expect(failed).is.true;
+
+      // save all of the redeem parameters
+      const balanceAfter = await ethUsdc.balanceOf(avaxWallet.address);
+      expect(balanceAfter.eq(balanceBefore)).is.true;
+    });
+
+    it("Should Not Allow Transfers for Zero Amount", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: avaxWallet.address,
+        amount: ethers.BigNumber.from("0"), // zero amount
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Send with amount of zero :)");
+
+      // try to submit a new guardian set including the zero address
+      let failed: boolean = false;
+      try {
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          });
+      } catch (e: any) {
+        expect(e.error.reason, "execution reverted: amount must be > 0").to.be
+          .equal;
+        failed = true;
+      }
+
+      // confirm that the call failed
+      expect(failed).is.true;
+    });
+
+    it("Should Not Allow Transfers to the Zero Address", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: avaxWallet.address,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array("0x", "ethereum"), // zero address
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Sending to bytes32(0) mintRecipient :)");
+
+      // try to submit a new guardian set including the zero address
+      let failed: boolean = false;
+      try {
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          });
+      } catch (e: any) {
+        expect(e.error.reason, "execution reverted: invalid mint recipient").to
+          .be.equal;
+        failed = true;
+      }
+
+      // confirm that the call failed
+      expect(failed).is.true;
+    });
+
+    it("Should Not Allow Transfers for Unregistered Tokens", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: avaxWallet.address, // unregistered "token"
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Sending an unregistered token :)");
+
+      // try to submit a new guardian set including the zero address
+      let failed: boolean = false;
+      try {
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          });
+      } catch (e: any) {
+        expect(e.error.reason, "execution reverted: token not accepted").to.be
+          .equal;
+        failed = true;
+      }
+
+      // confirm that the call failed
+      expect(failed).is.true;
+    });
+
+    it("Should Not Allow Transfers to Unregistered Contracts", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: avaxWallet.address,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ALGORAND as number, // unregistered chain
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Sending to an unregistered chain :)");
+
+      // try to submit a new guardian set including the zero address
+      let failed: boolean = false;
+      try {
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          });
+      } catch (e: any) {
+        expect(
+          e.error.reason,
+          "execution reverted: target contract not registered"
+        ).to.be.equal;
+        failed = true;
+      }
+
+      // confirm that the call failed
+      expect(failed).is.true;
+    });
+
+    it("Should Not Allow Transfers for Unregistered Target Tokens", async () => {
+      // initialize governance module
+      const governance = new CircleGovernanceEmitter();
+
+      // store euroc address
+      const eurocAddress = "0x53d80871b92dadeD34A4BdFA6838DdFC7f214240";
+      const timestamp = getTimeNow();
+      const chainId = await avaxCircleIntegration.chainId();
+
+      const published =
+        governance.publishCircleIntegrationRegisterAcceptedToken(
+          timestamp,
+          chainId,
+          eurocAddress
+        );
+      const signedMessage = guardians.addSignatures(published, [0]);
+
+      const receipt = await avaxCircleIntegration
+        .registerAcceptedToken(signedMessage)
+        .then((tx) => tx.wait())
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      // check state
+      const accepted = await avaxCircleIntegration.isAcceptedToken(
+        eurocAddress
+      );
+      expect(accepted).is.true;
+
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: eurocAddress,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ALGORAND as number, // unregistered chain
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Sending an unregistered target token :)");
+
+      // try to submit a new guardian set including the zero address
+      let failed: boolean = false;
+      try {
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          });
+      } catch (e: any) {
+        expect(
+          e.error.reason,
+          "execution reverted: target token not registered"
+        ).to.be.equal;
+        failed = true;
+      }
+
+      // confirm that the call failed
+      expect(failed).is.true;
+    });
+
+    it("Should Only Mint Tokens to the Mint Recipient", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: AVAX_USDC_TOKEN_ADDRESS,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Send me back to Ethereum!");
+
+      // increase allowance
+      const receipt = await avaxUsdc
+        .approve(avaxCircleIntegration.address, amountFromAvax)
+        .then((tx) => tx.wait());
+
+      // call transfer with payload and save redeemParameters struct
+      let redeemParameters = {} as RedeemParameters;
+      {
+        // grab USDC balance before performing the transfer
+        const balanceBefore = await avaxUsdc.balanceOf(avaxWallet.address);
+
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          })
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check USDC balance after to confirm the transfer worked
+        const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
+        expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
+
+        // Grab Circle message from logs
+        const circleMessage = await avaxCircleIntegration
+          .circleTransmitter()
+          .then((address) => findCircleMessageInLogs(receipt!.logs, address));
+        expect(circleMessage).is.not.null;
+
+        // Grab attestation
+        const circleAttestation = circleAttester.attestMessage(
+          ethers.utils.arrayify(circleMessage!)
+        );
+
+        // Now grab the Wormhole Message
+        const wormholeMessage = await avaxCircleIntegration
+          .wormhole()
+          .then((address) =>
+            findWormholeMessageInLogs(
+              receipt!.logs,
+              address,
+              CHAIN_ID_AVAX as number
+            )
+          );
+        expect(wormholeMessage).is.not.null;
+
+        const encodedWormholeMessage = Uint8Array.from(
+          guardians.addSignatures(wormholeMessage!, [0])
+        );
+
+        // save redeemParameters struct
+        redeemParameters = {
+          circleBridgeMessage: ethers.utils.arrayify(circleMessage!),
+          circleAttestation: circleAttestation!,
+          encodedWormholeMessage: encodedWormholeMessage!,
+        };
+      }
+
+      // try to redeem the transfer from a different wallet
+      {
+        // create wallet with different private key
+        const invalidEthWallet = new ethers.Wallet(
+          WALLET_PRIVATE_KEY_TWO,
+          ethProvider
+        );
+
+        // connect to contract with invalid wallet for redemption
+        const ethCircleIntegration = ICircleIntegration__factory.connect(
+          readCircleIntegrationProxyAddress(ETH_FORK_CHAIN_ID),
+          invalidEthWallet
+        );
+
+        let failed: boolean = false;
+        try {
+          // call redeemTokensWithPayload
+          const receipt = await ethCircleIntegration
+            .redeemTokensWithPayload(redeemParameters)
+            .then(async (tx) => {
+              const receipt = await tx.wait();
+              return receipt;
+            });
+        } catch (e: any) {
+          expect(
+            e.error.reason,
+            "execution reverted: caller must be mintRecipient"
+          ).to.be.equal;
+          failed = true;
+        }
+
+        // confirm that the call failed
+        expect(failed).is.true;
+      }
+    });
+
+    it("Should Not Redeem Tokens With a Bad Message Pair", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: AVAX_USDC_TOKEN_ADDRESS,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Send me back to Ethereum!");
+
+      // increase the token allowance by 2x, since we will do two transfers
+      const receipt = await avaxUsdc
+        .approve(avaxCircleIntegration.address, amountFromAvax.mul(2))
+        .then((tx) => tx.wait());
+
+      // send the same transfer twice and save the redeemParameters
+      let redeemParameters = {} as RedeemParameters[];
+      {
+        for (let i = 0; i < 2; i++) {
+          // grab USDC balance before performing the transfer
+          const balanceBefore = await avaxUsdc.balanceOf(avaxWallet.address);
+
+          // call transferTokensWithPayload
+          const receipt = await avaxCircleIntegration
+            .transferTokensWithPayload(params, batchId, payload)
+            .then(async (tx) => {
+              const receipt = await tx.wait();
+              return receipt;
+            })
+            .catch((msg) => {
+              // should not happen
+              console.log(msg);
+              return null;
+            });
+          expect(receipt).is.not.null;
+
+          // check USDC balance after to confirm the transfer worked
+          const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
+          expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
+
+          // Grab Circle message from logs
+          const circleMessage = await avaxCircleIntegration
+            .circleTransmitter()
+            .then((address) => findCircleMessageInLogs(receipt!.logs, address));
+          expect(circleMessage).is.not.null;
+
+          // Grab attestation
+          const circleAttestation = circleAttester.attestMessage(
+            ethers.utils.arrayify(circleMessage!)
+          );
+
+          // Now grab the Wormhole Message
+          const wormholeMessage = await avaxCircleIntegration
+            .wormhole()
+            .then((address) =>
+              findWormholeMessageInLogs(
+                receipt!.logs,
+                address,
+                CHAIN_ID_AVAX as number
+              )
+            );
+          expect(wormholeMessage).is.not.null;
+
+          const encodedWormholeMessage = Uint8Array.from(
+            guardians.addSignatures(wormholeMessage!, [0])
+          );
+
+          // save redeemParameters struct
+          redeemParameters[i] = {
+            circleBridgeMessage: ethers.utils.arrayify(circleMessage!),
+            circleAttestation: circleAttestation!,
+            encodedWormholeMessage: encodedWormholeMessage!,
+          };
+        }
+      }
+
+      // Create new redeemParameters with an invalid message pair, by
+      // pairing the Wormhole message from the second transfer with
+      // the Circle message and attestation from the first transfer.
+      const invalidRedeemParameters: RedeemParameters = {
+        circleBridgeMessage: redeemParameters[0].circleBridgeMessage,
+        circleAttestation: redeemParameters[0].circleAttestation,
+        encodedWormholeMessage: redeemParameters[1].encodedWormholeMessage,
+      };
+
+      {
+        let failed: boolean = false;
+        try {
+          // call redeemTokensWithPayload
+          const receipt = await ethCircleIntegration
+            .redeemTokensWithPayload(invalidRedeemParameters)
+            .then(async (tx) => {
+              const receipt = await tx.wait();
+              return receipt;
+            });
+        } catch (e: any) {
+          expect(e.error.reason, "execution reverted: invalid message pair").to
+            .be.equal;
+          failed = true;
+        }
+
+        // confirm that the call failed
+        expect(failed).is.true;
+      }
+    });
+
+    it("Should Revert if Circle Receiver Call Fails", async () => {
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: AVAX_USDC_TOKEN_ADDRESS,
+        amount: amountFromAvax,
+        targetChain: CHAIN_ID_ETH as number,
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Send me back to Ethereum!");
+
+      // increase allowance
+      const receipt = await avaxUsdc
+        .approve(avaxCircleIntegration.address, amountFromAvax)
+        .then((tx) => tx.wait());
+
+      // call transfer with payload and save redeemParameters struct
+      let redeemParameters = {} as RedeemParameters;
+      {
+        // grab USDC balance before performing the transfer
+        const balanceBefore = await avaxUsdc.balanceOf(avaxWallet.address);
+
+        // call transferTokensWithPayload
+        const receipt = await avaxCircleIntegration
+          .transferTokensWithPayload(params, batchId, payload)
+          .then(async (tx) => {
+            const receipt = await tx.wait();
+            return receipt;
+          })
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
+        // check USDC balance after to confirm the transfer worked
+        const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
+        expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
+
+        // Grab Circle message from logs
+        const circleMessage = await avaxCircleIntegration
+          .circleTransmitter()
+          .then((address) => findCircleMessageInLogs(receipt!.logs, address));
+        expect(circleMessage).is.not.null;
+
+        // Grab attestation
+        const circleAttestation = circleAttester.attestMessage(
+          ethers.utils.arrayify(circleMessage!)
+        );
+
+        // Now grab the Wormhole Message
+        const wormholeMessage = await avaxCircleIntegration
+          .wormhole()
+          .then((address) =>
+            findWormholeMessageInLogs(
+              receipt!.logs,
+              address,
+              CHAIN_ID_AVAX as number
+            )
+          );
+        expect(wormholeMessage).is.not.null;
+
+        const encodedWormholeMessage = Uint8Array.from(
+          guardians.addSignatures(wormholeMessage!, [0])
+        );
+
+        // save redeemParameters struct
+        redeemParameters = {
+          circleBridgeMessage: ethers.utils.arrayify(circleMessage!),
+          circleAttestation: ethers.utils.arrayify("0x"),
+          encodedWormholeMessage: encodedWormholeMessage!,
+        };
+      }
+
+      // try to redeem the transfer from a different wallet
+      {
+        let failed: boolean = false;
+        try {
+          // call redeemTokensWithPayload
+          const receipt = await ethCircleIntegration
+            .redeemTokensWithPayload(redeemParameters)
+            .then(async (tx) => {
+              const receipt = await tx.wait();
+              return receipt;
+            });
+        } catch (e: any) {
+          expect(
+            e.error.reason,
+            "execution reverted: CIRCLE_INTEGRATION: failed to mint tokens"
+          ).to.be.equal;
+          failed = true;
+        }
+
+        // confirm that the call failed
+        expect(failed).is.true;
+      }
     });
   });
 });
