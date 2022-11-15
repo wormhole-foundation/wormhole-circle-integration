@@ -21,6 +21,7 @@ import {
 import {
   ICircleIntegration__factory,
   IUSDC__factory,
+  IMockIntegration__factory,
 } from "../src/ethers-contracts";
 import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {RedeemParameters, TransferParameters} from "../src";
@@ -31,6 +32,7 @@ import {
   getTimeNow,
   MockCircleAttester,
   readCircleIntegrationProxyAddress,
+  readMockIntegrationAddress,
   findWormholeMessageInLogs,
 } from "./helpers/utils";
 
@@ -54,6 +56,12 @@ describe("Circle Integration Test", () => {
     avaxWallet
   );
   const avaxUsdc = IUSDC__factory.connect(AVAX_USDC_TOKEN_ADDRESS, avaxWallet);
+
+  // mock integration contract on avax
+  const avaxMockIntegration = IMockIntegration__factory.connect(
+    readMockIntegrationAddress(AVAX_FORK_CHAIN_ID),
+    avaxWallet
+  );
 
   // global
   const guardians = new MockGuardians(WORMHOLE_GUARDIAN_SET_INDEX, [
@@ -285,7 +293,7 @@ describe("Circle Integration Test", () => {
         token: ETH_USDC_TOKEN_ADDRESS,
         amount: amountFromEth,
         targetChain: CHAIN_ID_AVAX as number,
-        mintRecipient: tryNativeToUint8Array(ethWallet.address, "avalanche"),
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "avalanche"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("All your base are belong to us.");
@@ -372,7 +380,7 @@ describe("Circle Integration Test", () => {
         });
       expect(receipt).is.not.null;
 
-      // save all of the redeem parameters
+      // confirm expected balance change
       const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
       expect(balanceAfter.sub(balanceBefore).eq(amountFromEth)).is.true;
     });
@@ -383,7 +391,7 @@ describe("Circle Integration Test", () => {
         token: AVAX_USDC_TOKEN_ADDRESS,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Send me back to Ethereum!");
@@ -471,7 +479,7 @@ describe("Circle Integration Test", () => {
         });
       expect(receipt).is.not.null;
 
-      // save all of the redeem parameters
+      // confirm expected balance change
       const balanceAfter = await ethUsdc.balanceOf(avaxWallet.address);
       expect(balanceAfter.sub(balanceBefore).eq(amountFromAvax)).is.true;
     });
@@ -505,7 +513,7 @@ describe("Circle Integration Test", () => {
       // confirm that the call failed
       expect(failed).is.true;
 
-      // save all of the redeem parameters
+      // confirm expected balance change
       const balanceAfter = await ethUsdc.balanceOf(avaxWallet.address);
       expect(balanceAfter.eq(balanceBefore)).is.true;
     });
@@ -516,7 +524,7 @@ describe("Circle Integration Test", () => {
         token: avaxWallet.address,
         amount: ethers.BigNumber.from("0"), // zero amount
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Send with amount of zero :)");
@@ -578,7 +586,7 @@ describe("Circle Integration Test", () => {
         token: avaxWallet.address, // unregistered "token"
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending an unregistered token :)");
@@ -609,7 +617,7 @@ describe("Circle Integration Test", () => {
         token: avaxWallet.address,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ALGORAND as number, // unregistered chain
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending to an unregistered chain :)");
@@ -674,7 +682,7 @@ describe("Circle Integration Test", () => {
         token: eurocAddress,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ALGORAND as number, // unregistered chain
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending an unregistered target token :)");
@@ -707,7 +715,7 @@ describe("Circle Integration Test", () => {
         token: AVAX_USDC_TOKEN_ADDRESS,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Send me back to Ethereum!");
@@ -818,10 +826,10 @@ describe("Circle Integration Test", () => {
         token: AVAX_USDC_TOKEN_ADDRESS,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
-      const payload = Buffer.from("Send me back to Ethereum!");
+      const payload = Buffer.from("Scrambled Messageggs!");
 
       // increase the token allowance by 2x, since we will do two transfers
       const receipt = await avaxUsdc
@@ -925,10 +933,10 @@ describe("Circle Integration Test", () => {
         token: AVAX_USDC_TOKEN_ADDRESS,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
-      const payload = Buffer.from("Send me back to Ethereum!");
+      const payload = Buffer.from("To the moon!");
 
       // increase allowance
       const receipt = await avaxUsdc
@@ -1016,6 +1024,158 @@ describe("Circle Integration Test", () => {
         // confirm that the call failed
         expect(failed).is.true;
       }
+    });
+  });
+
+  describe("Mock Integration Contract", () => {
+    const amountFromEth = ethers.BigNumber.from("42069");
+
+    // create new avax wallet for mock integration contract interaction
+    const avaxMockWallet = new ethers.Wallet(
+      WALLET_PRIVATE_KEY_TWO,
+      avaxProvider
+    );
+
+    let localVariables: any = {};
+
+    it("Should Set Up Mock Integration Contract on Avax", async () => {
+      // call the `setup` method on the MockIntegration contract
+      const receipt = await avaxMockIntegration
+        .setup(avaxCircleIntegration.address, ethWallet.address, CHAIN_ID_ETH)
+        .then((tx) => tx.wait())
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      // confirm that the contract is set up correctly by querying the getters
+      const trustedChainId = await avaxMockIntegration.trustedChainId();
+      expect(trustedChainId).to.equal(CHAIN_ID_ETH);
+
+      const trustedSender = await avaxMockIntegration.trustedSender();
+      expect(trustedSender).to.equal(ethWallet.address);
+
+      const circleIntegration = await avaxMockIntegration.circleIntegration();
+      expect(circleIntegration).to.equal(avaxCircleIntegration.address);
+    });
+
+    it("Should Transfer Tokens With Payload On Ethereum", async () => {
+      // set up the mock Integration contract
+      // define transferTokensWithPayload function arguments
+      const params: TransferParameters = {
+        token: ETH_USDC_TOKEN_ADDRESS,
+        amount: amountFromEth,
+        targetChain: CHAIN_ID_AVAX as number,
+        mintRecipient: tryNativeToUint8Array(
+          avaxMockIntegration.address,
+          "avalanche"
+        ), // set mint recipient as the avax mock integration contract
+      };
+      const batchId = 0; // opt out of batching
+      const payload = Buffer.from("Coming to a mock contract near you.");
+
+      // increase allowance
+      {
+        const receipt = await ethUsdc
+          .approve(ethCircleIntegration.address, amountFromEth)
+          .then((tx) => tx.wait());
+      }
+
+      // grab USDC balance before performing the transfer
+      const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
+
+      // call transferTokensWithPayload
+      const receipt = await ethCircleIntegration
+        .transferTokensWithPayload(params, batchId, payload)
+        .then(async (tx) => {
+          const receipt = await tx.wait();
+          return receipt;
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      // check USDC balance after to confirm the transfer worked
+      const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
+      expect(balanceBefore.sub(balanceAfter).eq(amountFromEth)).is.true;
+
+      // Grab Circle message from logs
+      const circleMessage = await ethCircleIntegration
+        .circleTransmitter()
+        .then((address) => findCircleMessageInLogs(receipt!.logs, address));
+      expect(circleMessage).is.not.null;
+
+      // Grab attestation
+      const circleAttestation = circleAttester.attestMessage(
+        ethers.utils.arrayify(circleMessage!)
+      );
+
+      // Now grab the Wormhole Message
+      const wormholeMessage = await ethCircleIntegration
+        .wormhole()
+        .then((address) =>
+          findWormholeMessageInLogs(
+            receipt!.logs,
+            address,
+            CHAIN_ID_ETH as number
+          )
+        );
+      expect(wormholeMessage).is.not.null;
+
+      const encodedWormholeMessage = Uint8Array.from(
+        guardians.addSignatures(wormholeMessage!, [0])
+      );
+
+      localVariables.circleBridgeMessage = circleMessage!;
+      localVariables.circleAttestation = circleAttestation!;
+      localVariables.encodedWormholeMessage = encodedWormholeMessage;
+      localVariables.payload = ethers.utils.hexlify(payload);
+    });
+
+    it("Should Redeem Tokens Via Mock Integration Contract on Avax and Verify the Saved Payload", async () => {
+      const redeemParameters: RedeemParameters = {
+        circleBridgeMessage: localVariables.circleBridgeMessage!,
+        circleAttestation: localVariables.circleAttestation!,
+        encodedWormholeMessage: localVariables.encodedWormholeMessage!,
+      };
+
+      const balanceBefore = await avaxUsdc.balanceOf(avaxMockWallet.address);
+
+      // invoke the mock contract with the trusted sender wallet (shares address with eth wallet)
+      const receipt = await avaxMockIntegration
+        .redeemTokensWithPayload(redeemParameters, avaxMockWallet.address)
+        .then(async (tx) => {
+          const receipt = await tx.wait();
+          return receipt;
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(receipt).is.not.null;
+
+      // confirm the expected balance change for the mock avax wallet
+      const balanceAfter = await avaxUsdc.balanceOf(avaxMockWallet.address);
+      expect(balanceAfter.sub(balanceBefore).eq(amountFromEth)).is.true;
+
+      // query the mock contract and confirm that the payload was saved correctly
+      const savedPayload = await await avaxMockIntegration
+        .redemptionSequence()
+        .then(async (sequence) => {
+          return await avaxMockIntegration.getPayload(sequence);
+        })
+        .catch((msg) => {
+          // should not happen
+          console.log(msg);
+          return null;
+        });
+      expect(savedPayload).is.equal(localVariables.payload);
     });
   });
 });

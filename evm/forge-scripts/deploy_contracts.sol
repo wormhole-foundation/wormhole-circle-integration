@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
+import "forge-std/console.sol";
 
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 
@@ -14,8 +15,6 @@ import {CircleIntegrationImplementation} from "../src/circle_integration/CircleI
 import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
 
 import {WormholeSimulator} from "wormhole-forge-sdk/WormholeSimulator.sol";
-
-import "forge-std/console.sol";
 
 contract ContractScript is Script {
     // Wormhole
@@ -64,7 +63,7 @@ contract ContractScript is Script {
         // begin sending transactions
         vm.startBroadcast();
 
-        // HelloWorld.sol
+        // deploy Circle Integration proxy
         deployCircleIntegration();
 
         // finished

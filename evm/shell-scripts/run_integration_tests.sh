@@ -42,6 +42,11 @@ forge script forge-scripts/deploy_contracts.sol \
     --private-key $PRIVATE_KEY \
     --broadcast --slow >> deploy.out 2>&1
 
+forge script forge-scripts/deploy_mock_contracts.sol \
+    --rpc-url http://localhost:8546 \
+    --private-key $PRIVATE_KEY \
+    --broadcast --slow >> deploy.out 2>&1
+
 echo "overriding foundry.toml"
 mv -v cache/foundry.toml foundry.toml
 

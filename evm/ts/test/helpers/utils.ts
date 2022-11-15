@@ -1,6 +1,6 @@
-import { tryNativeToHexString } from "@certusone/wormhole-sdk";
-import { ethSignWithPrivate } from "@certusone/wormhole-sdk/lib/cjs/mock";
-import { ethers } from "ethers";
+import {tryNativeToHexString} from "@certusone/wormhole-sdk";
+import {ethSignWithPrivate} from "@certusone/wormhole-sdk/lib/cjs/mock";
+import {ethers} from "ethers";
 import * as fs from "fs";
 
 export function getTimeNow() {
@@ -14,6 +14,15 @@ export function readCircleIntegrationProxyAddress(chain: number): string {
       "utf-8"
     )
   ).transactions[2].contractAddress;
+}
+
+export function readMockIntegrationAddress(chain: number): string {
+  return JSON.parse(
+    fs.readFileSync(
+      `${__dirname}/../../../broadcast-test/deploy_mock_contracts.sol/${chain}/run-latest.json`,
+      "utf-8"
+    )
+  ).transactions[0].contractAddress;
 }
 
 export function findWormholeMessageInLogs(
