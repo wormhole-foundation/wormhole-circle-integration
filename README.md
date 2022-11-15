@@ -1,75 +1,23 @@
-# wormhole-circle-integration
+# Wormhole-Circle-Integration
 
-### Details
+Wormhole's Circle Integration smart contracts enable composable cross-chain transfers of Circle supported assets by pairing Circle's [Cross-Chain Transfer Protocol](https://www.circle.com/en/pressroom/circle-enables-usdc-interoperability-for-developers-with-the-launch-of-cross-chain-transfer-protocol) with Wormhole's generic-messaging layer.
 
-This repo demonstrates how to send USDC cross-chain (with additional instructions to be used by a contract) by using Wormhole's generic-messaging layer and by interacting with Circle's Cross-Chain Transfer Protocol.
+## Prerequisites
 
-### Compiling contracts
+### EVM
 
-Install [Foundry tools](https://book.getfoundry.sh/getting-started/installation), which includes `forge`, `anvil` and `cast` CLI tools.
+[Foundry tools](https://book.getfoundry.sh/getting-started/installation), which include `forge`, `anvil` and `cast` CLI tools, are a requirement for testing and deploying the Circle Integration smart contracts.
 
-```
-cd evm
-make build
-```
+## Supported Blockchains
 
-### Testnet Deployment
+Currently, Circle's [Cross-Chain Transfer Protocol](https://www.circle.com/en/pressroom/circle-enables-usdc-interoperability-for-developers-with-the-launch-of-cross-chain-transfer-protocol) is only available for the Ethereum and Avalanche networks. Both of these chains are supported by Wormhole.
 
-```
-cd evm
+## Wormhole
 
-# goerli
-. env/eth-goerli-testnet.env && PRIVATE_KEY=put_your_private_key_here bash shell-scripts/deploy_circle_integration.sh
+See the [Wormhole monorepo](https://github.com/wormhole-foundation/wormhole) for more information about the reference implementation of the [Wormhole protocol](https://wormholenetwork.com).
 
-# fuji
-. env/avax-fuji-testnet.env && PRIVATE_KEY=put_your_private_key_here bash shell-scripts/deploy_circle_integration.sh
-```
-
-### Deployed Contract Addresses
-
-```
-goerli: 0xdbedb4ebd098e9f1777af9f8088e794d381309d1
-fuji: 0x3e6a4543165aaecbf7ffc81e54a1c7939cb12cb8
-```
-
-### Structs
-
-```
-struct TransferParameters {
-    address token;
-    uint256 amount;
-    uint16 targetChain;
-    bytes32 mintRecipient;
-}
-
-struct RedeemParameters {
-    bytes encodedWormholeMessage;
-    bytes circleBridgeMessage;
-    bytes circleAttestation;
-}
-
-// payload ID == 1
-struct DepositWithPayload {
-    bytes32 token;
-    uint256 amount;
-    uint32 sourceDomain;
-    uint32 targetDomain;
-    uint64 nonce;
-    bytes32 mintRecipient;
-    bytes payload;
-}
-```
-
-### API
-
-```solidity
-function transferTokensWithPayload(
-    TransferParameters memory transferParams,
-    uint32 batchId,
-    bytes memory payload
-) public payable returns (uint64 messageSequence)
-
-function redeemTokensWithPayload(
-    RedeemParameters memory params
-) public returns (DepositWithPayload memory depositWithPayload)
-```
+⚠ **This software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied. See the License for the specific language governing permissions and limitations under the License.** Or plainly
+spoken - this is a very complex piece of software which targets a bleeding-edge, experimental smart contract runtime.
+Mistakes happen, and no matter how hard you try and whether you pay someone to audit it, it may eat your tokens, set
+your printer on fire or startle your cat. Cryptocurrencies are a high-risk investment, no matter how fancy.
