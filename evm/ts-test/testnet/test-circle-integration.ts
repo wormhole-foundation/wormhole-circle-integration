@@ -1,6 +1,6 @@
-require("dotenv").config({ path: ".env" });
-import { ethers } from "ethers";
-import axios, { AxiosResponse } from "axios";
+require("dotenv").config({path: ".env"});
+import {ethers} from "ethers";
+import axios, {AxiosResponse} from "axios";
 import {
   ChainId,
   CHAIN_ID_ETH,
@@ -9,10 +9,11 @@ import {
   getEmitterAddressEth,
   getSignedVAAWithRetry,
 } from "@certusone/wormhole-sdk";
-import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
-import { abi as USDC_INTEGRATION_ABI } from "../../out/CircleIntegration.sol/CircleIntegration.json";
-import { abi as IERC20_ABI } from "../../out/IERC20.sol/IERC20.json";
-import { abi as WORMHOLE_ABI } from "../../out/IWormhole.sol/IWormhole.json";
+import {NodeHttpTransport} from "@improbable-eng/grpc-web-node-http-transport";
+import {abi as USDC_INTEGRATION_ABI} from "../../out/CircleIntegration.sol/CircleIntegration.json";
+import {abi as RELAYER_ABI} from "./CircleRelayer.json";
+import {abi as IERC20_ABI} from "../../out/IERC20.sol/IERC20.json";
+import {abi as WORMHOLE_ABI} from "../../out/IWormhole.sol/IWormhole.json";
 
 // consts fuji
 const AVAX_PROVIDER = new ethers.providers.JsonRpcProvider(
@@ -22,8 +23,9 @@ const AVAX_SIGNER = new ethers.Wallet(
   process.env.ETH_PRIVATE_KEY!,
   AVAX_PROVIDER
 );
-const AVAX_CONTRACT_ADDRESS = "0x3e6a4543165aaecbf7ffc81e54a1c7939cb12cb8";
+const AVAX_CONTRACT_ADDRESS = "0x61e71a87b492c5545844079ff205e025c3c7b5e8";
 const AVAX_TRANSMITTER_ADDRESS = "0x52FfFb3EE8Fa7838e9858A2D5e454007b9027c3C";
+const AVAX_USDC_ADDRESS = "0x5425890298aed601595a70AB815c96711a31Bc65";
 const WORMHOLE_AVAX = "0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C";
 const AVAX_DOMAIN: number = 1;
 
@@ -35,8 +37,13 @@ const ETH_SIGNER = new ethers.Wallet(
   process.env.ETH_PRIVATE_KEY!,
   ETH_PROVIDER
 );
-const ETH_CONTRACT_ADDRESS = "0xdbedb4ebd098e9f1777af9f8088e794d381309d1";
+const ETH_CONTRACT_ADDRESS = "0xaf2983e1e5bb6ef02c8a48d4666fde7bbac878be";
+const ETH_USDC_ADDRESS = "0x07865c6E87B9F70255377e024ace6630C1Eaa37F";
 const ETH_DOMAIN: number = 0;
+
+// relayer contracts
+const AVAX_RELAYER_ADDRESS = "0x65d1f890fea9a03a0fda808f3f7de60dcda38612";
+const ETH_RELAYER_ADDRESS = "0xc3e75d6a04596c662aed199e93f876749c21ae5d";
 
 // wormhole
 export const WORMHOLE_RPC_HOSTS = [
@@ -66,13 +73,28 @@ let USDC_INTEGRATION_TARGET = new ethers.Contract(
 USDC_INTEGRATION_TARGET = USDC_INTEGRATION_TARGET.connect(ETH_SIGNER);
 
 // create USDC contract to approve
-const USDC_ADDRESS = "0x5425890298aed601595a70AB815c96711a31Bc65";
 let USDC_CONTRACT = new ethers.Contract(
-  USDC_ADDRESS,
+  AVAX_USDC_ADDRESS,
   IERC20_ABI,
   AVAX_PROVIDER
 );
 USDC_CONTRACT = USDC_CONTRACT.connect(AVAX_SIGNER);
+
+// avax relayer contracts
+let RELAYER_SOURCE = new ethers.Contract(
+  AVAX_RELAYER_ADDRESS,
+  RELAYER_ABI,
+  AVAX_PROVIDER
+);
+RELAYER_SOURCE = RELAYER_SOURCE.connect(AVAX_SIGNER);
+
+// eth relayer contracts
+let RELAYER_TARGET = new ethers.Contract(
+  ETH_RELAYER_ADDRESS,
+  RELAYER_ABI,
+  ETH_PROVIDER
+);
+RELAYER_TARGET = RELAYER_TARGET.connect(ETH_SIGNER);
 
 // wormhole event ABIs
 export const WORMHOLE_MESSAGE_EVENT_ABI = [
@@ -167,6 +189,8 @@ export async function getSignedVaaFromReceiptOnEth(
     wormholeAddress
   );
 
+  console.log(messageEvents);
+
   // grab the sequence from the parsed message log
   if (messageEvents.length !== 1) {
     throw Error("more than one message found in log");
@@ -220,10 +244,79 @@ async function updateFinality(
   await tx.wait();
 }
 
-export interface RedeemParameters {
-  encodedWormholeMessage: ethers.BytesLike;
-  circleBridgeMessage: ethers.BytesLike;
-  circleAttestation: ethers.BytesLike;
+async function registerToken(contract: ethers.Contract, token: string) {
+  console.log(`Registering token: ${token}`);
+
+  const tx = await contract.registerAcceptedToken(token);
+  await tx.wait();
+}
+
+async function registerTargetToken(
+  contract: ethers.Contract,
+  sourceToken: string,
+  targetChainId: ChainId,
+  targetToken: string
+) {
+  console.log(`Registering target token: ${targetToken}`);
+
+  const tx = await contract.registerTargetChainToken(
+    sourceToken,
+    targetChainId,
+    targetToken
+  );
+  await tx.wait();
+}
+
+async function registerRelayerContract(
+  contract: ethers.Contract,
+  targetChainId: ChainId,
+  targetContractAddress: string
+) {
+  console.log(`Registering relayer: ${targetContractAddress}`);
+
+  const tx = await contract.registerContract(
+    targetChainId,
+    "0x" + tryNativeToHexString(targetContractAddress, targetChainId)
+  );
+  await tx.wait();
+}
+
+async function updateRelayerFee(
+  contract: ethers.Contract,
+  chainId: ChainId,
+  address: string,
+  amount: ethers.BigNumberish
+) {
+  console.log(
+    `Updating relayer fee chain=${chainId}, amount=${amount.toString()}`
+  );
+
+  const tx = await contract.updateRelayerFee(chainId, address, amount);
+  await tx.wait();
+}
+
+async function updateNativeSwapRate(
+  contract: ethers.Contract,
+  token: string,
+  amount: ethers.BigNumberish
+) {
+  console.log(`Updating swap rate token=${token}, amount=${amount.toString()}`);
+
+  const tx = await contract.updateNativeSwapRate(token, amount);
+  await tx.wait();
+}
+
+async function updateMaxSwapRate(
+  contract: ethers.Contract,
+  token: string,
+  amount: ethers.BigNumberish
+) {
+  console.log(
+    `Updating max swap amount token=${token}, amount=${amount.toString()}`
+  );
+
+  const tx = await contract.updateMaxSwapAmount(token, amount);
+  await tx.wait();
 }
 
 async function registerEverything() {
@@ -254,17 +347,42 @@ async function registerEverything() {
   );
 }
 
-async function transferTokens() {
+export interface RedeemParameters {
+  encodedWormholeMessage: ethers.BytesLike;
+  circleBridgeMessage: ethers.BytesLike;
+  circleAttestation: ethers.BytesLike;
+}
+
+export interface TransferParameters {
+  token: string;
+  amount: ethers.BigNumber;
+  targetChain: number;
+  mintRecipient: ethers.BytesLike;
+}
+
+async function transferTokensWithPayload() {
   // struct to call target chain `redeemTokens` method with
   const redeemParams = {} as RedeemParameters;
 
   // input params to transferTokens
   const amount: ethers.BigNumber = ethers.utils.parseUnits("0.000001", 6);
   const toChain = CHAIN_ID_ETH;
-
-  // create signing key and derive public key
   const mintRecipient =
-    "0x" + tryNativeToHexString(AVAX_SIGNER.address, CHAIN_ID_ETH);
+    "0x" + tryNativeToHexString(ETH_SIGNER.address, CHAIN_ID_ETH);
+  const batchId: ethers.BigNumber = ethers.BigNumber.from("0");
+
+  const transferParams: TransferParameters = {
+    token: AVAX_USDC_ADDRESS,
+    amount: amount,
+    targetChain: toChain,
+    mintRecipient:
+      "0x" + tryNativeToHexString(ETH_SIGNER.address, CHAIN_ID_ETH),
+  };
+
+  // create an arbitrary payload to test with
+  const arbitraryPayload = ethers.utils.hexlify(
+    ethers.utils.toUtf8Bytes("SuperCoolCrossChainStuff0")
+  );
 
   // approve the contract to spend USDC
   const tx = await USDC_CONTRACT.approve(
@@ -274,11 +392,10 @@ async function transferTokens() {
   await tx.wait();
 
   // depositForBurn (transferTokens)
-  const tx2 = await USDC_INTEGRATION_SOURCE.transferTokens(
-    USDC_ADDRESS,
-    amount,
-    toChain,
-    mintRecipient
+  const tx2 = await USDC_INTEGRATION_SOURCE.transferTokensWithPayload(
+    transferParams,
+    batchId,
+    arbitraryPayload
   );
   const receipt: ethers.ContractReceipt = await tx2.wait();
 
@@ -293,6 +410,17 @@ async function transferTokens() {
     USDC_INTEGRATION_SOURCE.address,
     WORMHOLE_AVAX
   );
+
+  // parse the wormhole message to verify that the payload is correct
+  const parsedWormholeMessage = await AVAX_WORMHOLE_CONTRACT.parseVM(
+    redeemParams.encodedWormholeMessage
+  );
+  const parsedPayload =
+    await USDC_INTEGRATION_TARGET.decodeWormholeDepositWithPayload(
+      parsedWormholeMessage.payload
+    );
+
+  console.log(parsedPayload);
 
   // parse the circle message event from the MessageTransmitter contract
   const circleEvent = await parseCircleMessageEvent(
@@ -313,43 +441,44 @@ async function transferTokens() {
   redeemParams.circleAttestation = circleAttestation;
 
   // redeem the tokens on the target chain
-  const tx3 = await USDC_INTEGRATION_TARGET.redeemTokens(redeemParams);
+  const tx3 = await USDC_INTEGRATION_TARGET.redeemTokensWithPayload(
+    redeemParams
+  );
   const receipt2: ethers.ContractReceipt = await tx3.wait();
 
   console.log(`Mint transaction on Eth: ${receipt2.transactionHash}`);
 }
 
-async function transferTokensWithPayload() {
+async function transferTokensWithRelay(
+  amount_: string,
+  toNativeAmount_: string
+) {
   // struct to call target chain `redeemTokens` method with
   const redeemParams = {} as RedeemParameters;
 
   // input params to transferTokens
-  const amount: ethers.BigNumber = ethers.utils.parseUnits("0.000001", 6);
+  const amount: ethers.BigNumber = ethers.utils.parseUnits(amount_, 6);
+  const toNativeAmount: ethers.BigNumber = ethers.utils.parseUnits(
+    toNativeAmount_,
+    6
+  );
   const toChain = CHAIN_ID_ETH;
 
   // create signing key and derive public key
-  const mintRecipient =
+  const targetRecipientAddress =
     "0x" + tryNativeToHexString(ETH_SIGNER.address, CHAIN_ID_ETH);
 
   // approve the contract to spend USDC
-  const tx = await USDC_CONTRACT.approve(
-    USDC_INTEGRATION_SOURCE.address,
-    amount
-  );
+  const tx = await USDC_CONTRACT.approve(RELAYER_SOURCE.address, amount);
   await tx.wait();
 
-  // create an arbitrary payload to test with
-  const arbitraryPayload = ethers.utils.hexlify(
-    ethers.utils.toUtf8Bytes("SuperCoolCrossChainStuff0")
-  );
-
   // depositForBurn (transferTokens)
-  const tx2 = await USDC_INTEGRATION_SOURCE.transferTokensWithPayload(
-    USDC_ADDRESS,
+  const tx2 = await RELAYER_SOURCE.transferTokensWithRelay(
+    AVAX_USDC_ADDRESS,
     amount,
+    toNativeAmount,
     toChain,
-    mintRecipient,
-    arbitraryPayload
+    targetRecipientAddress
   );
   const receipt: ethers.ContractReceipt = await tx2.wait();
 
@@ -358,6 +487,7 @@ async function transferTokensWithPayload() {
   );
 
   // fetch the wormhole VAA
+  console.log("Searching for VAA.");
   redeemParams.encodedWormholeMessage = await getSignedVaaFromReceiptOnEth(
     receipt,
     CHAIN_ID_AVAX,
@@ -393,20 +523,32 @@ async function transferTokensWithPayload() {
   redeemParams.circleBridgeMessage = circleEvent.args.message;
   redeemParams.circleAttestation = circleAttestation;
 
-  // redeem the tokens on the target chain
-  const tx3 = await USDC_INTEGRATION_TARGET.redeemTokensWithPayload(
-    redeemParams
+  // fetch swap quote
+  const swapQuote = await RELAYER_TARGET.calculateNativeSwapAmount(
+    ETH_USDC_ADDRESS,
+    toNativeAmount
   );
+
+  // redeem the tokens on the target chain
+  const tx3 = await RELAYER_TARGET.redeemTokens(redeemParams, {
+    value: swapQuote,
+  });
   const receipt2: ethers.ContractReceipt = await tx3.wait();
 
   console.log(`Mint transaction on Eth: ${receipt2.transactionHash}`);
 }
 
 async function main() {
-  //await registerEverything();
-  //await updateFinality(USDC_INTEGRATION_TARGET, CHAIN_ID_ETH, 200);
-  //transferTokens();
-  transferTokensWithPayload();
+  // await registerEverything();
+  // await updateFinality(USDC_INTEGRATION_TARGET, CHAIN_ID_ETH, 200);
+  // await registerToken(USDC_INTEGRATION_SOURCE, AVAX_USDC_ADDRESS);
+  // await registerToken(USDC_INTEGRATION_TARGET, ETH_USDC_ADDRESS);
+  // await registerTargetToken(USDC_INTEGRATION_SOURCE, AVAX_USDC_ADDRESS, CHAIN_ID_ETH, ETH_USDC_ADDRESS);
+  // await registerTargetToken(USDC_INTEGRATION_TARGET, ETH_USDC_ADDRESS, CHAIN_ID_AVAX, AVAX_USDC_ADDRESS);
+  // await transferTokensWithPayload();
+
+  // // AVAX relayer fees
+  await transferTokensWithRelay("1", "0");
 }
 
 main();
