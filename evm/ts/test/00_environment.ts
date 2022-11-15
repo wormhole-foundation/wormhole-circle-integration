@@ -57,6 +57,7 @@ describe("Environment Test", () => {
         ETH_WORMHOLE_ADDRESS,
         provider
       );
+      expect(wormhole.address).to.equal(ETH_WORMHOLE_ADDRESS);
 
       it("EVM Chain ID", async () => {
         const network = await provider.getNetwork();
@@ -67,19 +68,20 @@ describe("Environment Test", () => {
         const chainId = await wormhole.chainId();
         expect(chainId).to.equal(CHAIN_ID_ETH as number);
 
+        // fetch current wormhole protocol fee
         const messageFee: ethers.BigNumber = await wormhole.messageFee();
         expect(messageFee.eq(WORMHOLE_MESSAGE_FEE)).to.be.true;
 
         // Override guardian set
         {
-          // Check guardian set index
+          // check guardian set index
           const guardianSetIndex = await wormhole.getCurrentGuardianSetIndex();
           expect(guardianSetIndex).to.equal(WORMHOLE_GUARDIAN_SET_INDEX);
 
-          // Override guardian set
+          // override guardian set
           const abiCoder = ethers.utils.defaultAbiCoder;
 
-          // Get slot for Guardian Set at the current index
+          // get slot for Guardian Set at the current index
           const guardianSetSlot = ethers.utils.keccak256(
             abiCoder.encode(["uint32", "uint256"], [guardianSetIndex, 2])
           );
@@ -124,14 +126,14 @@ describe("Environment Test", () => {
             ethers.utils.hexZeroPad(devnetGuardian, 32),
           ]);
 
-          // Change the length to 1 guardian
+          // change the length to 1 guardian
           await provider.send("anvil_setStorageAt", [
             wormhole.address,
             guardianSetSlot,
             ethers.utils.hexZeroPad("0x1", 32),
           ]);
 
-          // Confirm guardian set override
+          // confirm guardian set override
           const guardians = await wormhole
             .getGuardianSet(guardianSetIndex)
             .then(
@@ -143,6 +145,7 @@ describe("Environment Test", () => {
       });
 
       it("Wormhole SDK", async () => {
+        // confirm that the Wormhole SDK is installed
         const accounts = await provider.listAccounts();
         expect(tryNativeToHexString(accounts[0], "ethereum")).to.equal(
           "00000000000000000000000090f8bf6a479f320ead074411a4b0e7944ea8c9c1"
@@ -150,10 +153,13 @@ describe("Environment Test", () => {
       });
 
       it("Circle", async () => {
+        // instantiate Circle Bridge contract
         const circleBridge = ICircleBridge__factory.connect(
           ETH_CIRCLE_BRIDGE_ADDRESS,
           provider
         );
+
+        // fetch attestation manager address
         const attesterManager = await circleBridge
           .localMessageTransmitter()
           .then((address) =>
@@ -162,8 +168,10 @@ describe("Environment Test", () => {
           .then((messageTransmitter) => messageTransmitter.attesterManager());
         const myAttester = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, provider);
 
-        // start prank
+        // start prank (impersonate the attesterManager)
         await provider.send("anvil_impersonateAccount", [attesterManager]);
+
+        // instantiate message transmitter
         const messageTransmitter = await circleBridge
           .localMessageTransmitter()
           .then((address) =>
@@ -205,6 +213,7 @@ describe("Environment Test", () => {
           attesterManager,
         ]);
 
+        // confirm that the attester address swap was successful
         const attester = await circleBridge
           .localMessageTransmitter()
           .then((address) =>
@@ -217,6 +226,7 @@ describe("Environment Test", () => {
       });
 
       it("USDC", async () => {
+        // fetch master minter address
         const masterMinter = await IUSDC__factory.connect(
           ETH_USDC_TOKEN_ADDRESS,
           provider
@@ -224,10 +234,10 @@ describe("Environment Test", () => {
 
         const wallet = new ethers.Wallet(WALLET_PRIVATE_KEY, provider);
 
-        // start prank
+        // start prank (impersonate the Circle masterMinter)
         await provider.send("anvil_impersonateAccount", [masterMinter]);
 
-        // Configure my wallet as minter
+        // configure my wallet as minter
         {
           const usdc = IUSDC__factory.connect(
             ETH_USDC_TOKEN_ADDRESS,
@@ -291,6 +301,7 @@ describe("Environment Test", () => {
         AVAX_WORMHOLE_ADDRESS,
         provider
       );
+      expect(wormhole.address).to.equal(AVAX_WORMHOLE_ADDRESS);
 
       it("EVM Chain ID", async () => {
         const network = await provider.getNetwork();
@@ -301,19 +312,20 @@ describe("Environment Test", () => {
         const chainId = await wormhole.chainId();
         expect(chainId).to.equal(CHAIN_ID_AVAX as number);
 
+        // fetch current wormhole protocol fee
         const messageFee = await wormhole.messageFee();
         expect(messageFee.eq(WORMHOLE_MESSAGE_FEE)).to.be.true;
 
-        // Override guardian set
+        // override guardian set
         {
-          // Check guardian set index
+          // check guardian set index
           const guardianSetIndex = await wormhole.getCurrentGuardianSetIndex();
           expect(guardianSetIndex).to.equal(WORMHOLE_GUARDIAN_SET_INDEX);
 
-          // Override guardian set
+          // override guardian set
           const abiCoder = ethers.utils.defaultAbiCoder;
 
-          // Get slot for Guardian Set at the current index
+          // get slot for Guardian Set at the current index
           const guardianSetSlot = ethers.utils.keccak256(
             abiCoder.encode(["uint32", "uint256"], [guardianSetIndex, 2])
           );
@@ -358,7 +370,7 @@ describe("Environment Test", () => {
             ethers.utils.hexZeroPad(devnetGuardian, 32),
           ]);
 
-          // Change the length to 1 guardian
+          // change the length to 1 guardian
           await provider.send("anvil_setStorageAt", [
             wormhole.address,
             guardianSetSlot,
@@ -377,6 +389,7 @@ describe("Environment Test", () => {
       });
 
       it("Wormhole SDK", async () => {
+        // confirm that the Wormhole SDK is installed
         const accounts = await provider.listAccounts();
         expect(tryNativeToHexString(accounts[0], "ethereum")).to.equal(
           "00000000000000000000000090f8bf6a479f320ead074411a4b0e7944ea8c9c1"
@@ -384,10 +397,13 @@ describe("Environment Test", () => {
       });
 
       it("Circle", async () => {
+        // instantiate Circle Bridge contract
         const circleBridge = ICircleBridge__factory.connect(
           AVAX_CIRCLE_BRIDGE_ADDRESS,
           provider
         );
+
+        // fetch attestation manager address
         const attesterManager = await circleBridge
           .localMessageTransmitter()
           .then((address) =>
@@ -396,8 +412,10 @@ describe("Environment Test", () => {
           .then((messageTransmitter) => messageTransmitter.attesterManager());
         const myAttester = new ethers.Wallet(GUARDIAN_PRIVATE_KEY, provider);
 
-        // start prank
+        // start prank (impersonate the attesterManager)
         await provider.send("anvil_impersonateAccount", [attesterManager]);
+
+        // instantiate message transmitter
         const messageTransmitter = await circleBridge
           .localMessageTransmitter()
           .then((address) =>
@@ -439,6 +457,7 @@ describe("Environment Test", () => {
           attesterManager,
         ]);
 
+        // confirm that the attester address swap was successful
         const attester = await circleBridge
           .localMessageTransmitter()
           .then((address) =>
@@ -451,6 +470,7 @@ describe("Environment Test", () => {
       });
 
       it("USDC", async () => {
+        // fetch master minter address
         const masterMinter = await IUSDC__factory.connect(
           AVAX_USDC_TOKEN_ADDRESS,
           provider
@@ -458,10 +478,10 @@ describe("Environment Test", () => {
 
         const wallet = new ethers.Wallet(WALLET_PRIVATE_KEY, provider);
 
-        // start prank
+        // start prank (impersonate the Circle masterMinter)
         await provider.send("anvil_impersonateAccount", [masterMinter]);
 
-        // Configure my wallet as minter
+        // configure my wallet as minter
         {
           const usdc = IUSDC__factory.connect(
             AVAX_USDC_TOKEN_ADDRESS,

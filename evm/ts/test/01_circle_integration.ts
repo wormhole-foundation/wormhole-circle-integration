@@ -37,7 +37,7 @@ import {
 } from "./helpers/utils";
 
 describe("Circle Integration Test", () => {
-  // ethereum
+  // ethereum wallet, CircleIntegration contract and USDC contract
   const ethProvider = new ethers.providers.StaticJsonRpcProvider(ETH_LOCALHOST);
   const ethWallet = new ethers.Wallet(WALLET_PRIVATE_KEY, ethProvider);
   const ethCircleIntegration = ICircleIntegration__factory.connect(
@@ -46,7 +46,7 @@ describe("Circle Integration Test", () => {
   );
   const ethUsdc = IUSDC__factory.connect(ETH_USDC_TOKEN_ADDRESS, ethWallet);
 
-  // avalanche
+  // avalanche wallet, CircleIntegration contract and USDC contract
   const avaxProvider = new ethers.providers.StaticJsonRpcProvider(
     AVAX_LOCALHOST
   );
@@ -63,26 +63,27 @@ describe("Circle Integration Test", () => {
     avaxWallet
   );
 
-  // global
+  // MockGuardians and MockCircleAttester objects
   const guardians = new MockGuardians(WORMHOLE_GUARDIAN_SET_INDEX, [
     GUARDIAN_PRIVATE_KEY,
   ]);
   const circleAttester = new MockCircleAttester(GUARDIAN_PRIVATE_KEY);
 
   describe("Registrations", () => {
+    // produces governance VAAs for CircleAttestation contract
     const governance = new CircleGovernanceEmitter();
 
     describe("Ethereum Goerli Testnet", () => {
       it("Should Register Foreign Circle Integration", async () => {
         const timestamp = getTimeNow();
         const chainId = await ethCircleIntegration.chainId();
-
         const emitterChain = await avaxCircleIntegration.chainId();
         const emitterAddress = Buffer.from(
           tryNativeToUint8Array(avaxCircleIntegration.address, "avalanche")
         );
         const domain = await avaxCircleIntegration.localDomain();
 
+        // create unsigned registerEmitterAndDomain governance message
         const published =
           governance.publishCircleIntegrationRegisterEmitterAndDomain(
             timestamp,
@@ -91,8 +92,11 @@ describe("Circle Integration Test", () => {
             emitterAddress,
             domain
           );
+
+        // sign governance message with guardian key
         const signedMessage = guardians.addSignatures(published, [0]);
 
+        // register the emitter and domain
         const receipt = await ethCircleIntegration
           .registerEmitterAndDomain(signedMessage)
           .then((tx) => tx.wait())
@@ -103,7 +107,7 @@ describe("Circle Integration Test", () => {
           });
         expect(receipt).is.not.null;
 
-        // check state
+        // check contract state to verify the registration
         const registeredEmitter = await ethCircleIntegration
           .getRegisteredEmitter(emitterChain)
           .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
@@ -114,14 +118,18 @@ describe("Circle Integration Test", () => {
         const timestamp = getTimeNow();
         const chainId = await ethCircleIntegration.chainId();
 
+        // create unsigned registerAcceptedToken governance message
         const published =
           governance.publishCircleIntegrationRegisterAcceptedToken(
             timestamp,
             chainId,
             ETH_USDC_TOKEN_ADDRESS
           );
+
+        // sign governance message with guardian key
         const signedMessage = guardians.addSignatures(published, [0]);
 
+        // register the token
         const receipt = await ethCircleIntegration
           .registerAcceptedToken(signedMessage)
           .then((tx) => tx.wait())
@@ -132,7 +140,7 @@ describe("Circle Integration Test", () => {
           });
         expect(receipt).is.not.null;
 
-        // check state
+        // check contract state to verify the registration
         const accepted = await ethCircleIntegration.isAcceptedToken(
           ETH_USDC_TOKEN_ADDRESS
         );
@@ -142,12 +150,12 @@ describe("Circle Integration Test", () => {
       it("Should Register Target Chain Token", async () => {
         const timestamp = getTimeNow();
         const chainId = await ethCircleIntegration.chainId();
-
         const targetChain = await avaxCircleIntegration.chainId();
         const targetToken = Buffer.from(
           tryNativeToUint8Array(AVAX_USDC_TOKEN_ADDRESS, "avalanche")
         );
 
+        // create unsigned registerTargetChainToken governance message
         const published =
           governance.publishCircleIntegrationRegisterTargetChainToken(
             timestamp,
@@ -156,8 +164,11 @@ describe("Circle Integration Test", () => {
             targetChain,
             targetToken
           );
+
+        // sign governance message with guardian key
         const signedMessage = guardians.addSignatures(published, [0]);
 
+        // register the target token
         const receipt = await ethCircleIntegration
           .registerTargetChainToken(signedMessage)
           .then((tx) => tx.wait())
@@ -168,7 +179,7 @@ describe("Circle Integration Test", () => {
           });
         expect(receipt).is.not.null;
 
-        // check state
+        // check contract state to verify the registration
         const registeredTargetToken = await ethCircleIntegration
           .targetAcceptedToken(ETH_USDC_TOKEN_ADDRESS, targetChain)
           .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
@@ -180,13 +191,13 @@ describe("Circle Integration Test", () => {
       it("Should Register Foreign Circle Integration", async () => {
         const timestamp = getTimeNow();
         const chainId = await avaxCircleIntegration.chainId();
-
         const emitterChain = await ethCircleIntegration.chainId();
         const emitterAddress = Buffer.from(
           tryNativeToUint8Array(ethCircleIntegration.address, "avalanche")
         );
         const domain = await ethCircleIntegration.localDomain();
 
+        // create unsigned registerEmitterAndDomain governance message
         const published =
           governance.publishCircleIntegrationRegisterEmitterAndDomain(
             timestamp,
@@ -197,6 +208,7 @@ describe("Circle Integration Test", () => {
           );
         const signedMessage = guardians.addSignatures(published, [0]);
 
+        // sign governance message with guardian key
         const receipt = await avaxCircleIntegration
           .registerEmitterAndDomain(signedMessage)
           .then((tx) => tx.wait())
@@ -207,7 +219,7 @@ describe("Circle Integration Test", () => {
           });
         expect(receipt).is.not.null;
 
-        // check state
+        // check contract state to verify the registration
         const registeredEmitter = await avaxCircleIntegration
           .getRegisteredEmitter(emitterChain)
           .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
@@ -218,14 +230,18 @@ describe("Circle Integration Test", () => {
         const timestamp = getTimeNow();
         const chainId = await avaxCircleIntegration.chainId();
 
+        // create unsigned registerAcceptedToken governance message
         const published =
           governance.publishCircleIntegrationRegisterAcceptedToken(
             timestamp,
             chainId,
             AVAX_USDC_TOKEN_ADDRESS
           );
+
+        // sign governance message with guardian key
         const signedMessage = guardians.addSignatures(published, [0]);
 
+        // register the token
         const receipt = await avaxCircleIntegration
           .registerAcceptedToken(signedMessage)
           .then((tx) => tx.wait())
@@ -236,7 +252,7 @@ describe("Circle Integration Test", () => {
           });
         expect(receipt).is.not.null;
 
-        // check state
+        // check contract state to verify the registration
         const accepted = await avaxCircleIntegration.isAcceptedToken(
           AVAX_USDC_TOKEN_ADDRESS
         );
@@ -246,12 +262,12 @@ describe("Circle Integration Test", () => {
       it("Should Register Target Chain Token", async () => {
         const timestamp = getTimeNow();
         const chainId = await avaxCircleIntegration.chainId();
-
         const targetChain = await ethCircleIntegration.chainId();
         const targetToken = Buffer.from(
           tryNativeToUint8Array(ETH_USDC_TOKEN_ADDRESS, "avalanche")
         );
 
+        // create unsigned registerTargetChainToken governance message
         const published =
           governance.publishCircleIntegrationRegisterTargetChainToken(
             timestamp,
@@ -260,8 +276,11 @@ describe("Circle Integration Test", () => {
             targetChain,
             targetToken
           );
+
+        // sign governance message with guardian key
         const signedMessage = guardians.addSignatures(published, [0]);
 
+        // register the target token
         const receipt = await avaxCircleIntegration
           .registerTargetChainToken(signedMessage)
           .then((tx) => tx.wait())
@@ -272,7 +291,7 @@ describe("Circle Integration Test", () => {
           });
         expect(receipt).is.not.null;
 
-        // check state
+        /// check contract state to verify the registration
         const registeredTargetToken = await avaxCircleIntegration
           .targetAcceptedToken(AVAX_USDC_TOKEN_ADDRESS, targetChain)
           .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
@@ -326,18 +345,18 @@ describe("Circle Integration Test", () => {
       const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
       expect(balanceBefore.sub(balanceAfter).eq(amountFromEth)).is.true;
 
-      // Grab Circle message from logs
+      // grab Circle message from logs
       const circleMessage = await ethCircleIntegration
         .circleTransmitter()
         .then((address) => findCircleMessageInLogs(receipt!.logs, address));
       expect(circleMessage).is.not.null;
 
-      // Grab attestation
+      // grab attestation
       const circleAttestation = circleAttester.attestMessage(
         ethers.utils.arrayify(circleMessage!)
       );
 
-      // Now grab the Wormhole Message
+      // now grab the Wormhole message
       const wormholeMessage = await ethCircleIntegration
         .wormhole()
         .then((address) =>
@@ -349,24 +368,32 @@ describe("Circle Integration Test", () => {
         );
       expect(wormholeMessage).is.not.null;
 
+      // sign the DepositWithPayload message
       const encodedWormholeMessage = Uint8Array.from(
         guardians.addSignatures(wormholeMessage!, [0])
       );
 
+      // save all of the redeem parameters
       localVariables.circleBridgeMessage = circleMessage!;
       localVariables.circleAttestation = circleAttestation!;
       localVariables.encodedWormholeMessage = encodedWormholeMessage;
     });
 
     it("Should Redeem Tokens With Payload On Avax", async () => {
+      // create RedeemParameters struct to invoke the target contract with
       const redeemParameters: RedeemParameters = {
         circleBridgeMessage: localVariables.circleBridgeMessage!,
         circleAttestation: localVariables.circleAttestation!,
         encodedWormholeMessage: localVariables.encodedWormholeMessage!,
       };
 
+      // clear the localVariables object
+      localVariables = {};
+
+      // grab the balance before redeeming the transfer
       const balanceBefore = await avaxUsdc.balanceOf(avaxWallet.address);
 
+      // redeem the transfer
       const receipt = await avaxCircleIntegration
         .redeemTokensWithPayload(redeemParameters)
         .then(async (tx) => {
@@ -391,7 +418,7 @@ describe("Circle Integration Test", () => {
         token: AVAX_USDC_TOKEN_ADDRESS,
         amount: amountFromAvax,
         targetChain: CHAIN_ID_ETH as number,
-        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
+        mintRecipient: tryNativeToUint8Array(avaxWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Send me back to Ethereum!");
@@ -424,18 +451,18 @@ describe("Circle Integration Test", () => {
       const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
       expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
 
-      // Grab Circle message from logs
+      // grab Circle message from logs
       const circleMessage = await avaxCircleIntegration
         .circleTransmitter()
         .then((address) => findCircleMessageInLogs(receipt!.logs, address));
       expect(circleMessage).is.not.null;
 
-      // Grab attestation
+      // grab attestation
       const circleAttestation = circleAttester.attestMessage(
         ethers.utils.arrayify(circleMessage!)
       );
 
-      // Now grab the Wormhole Message
+      // now grab the Wormhole message
       const wormholeMessage = await avaxCircleIntegration
         .wormhole()
         .then((address) =>
@@ -447,6 +474,7 @@ describe("Circle Integration Test", () => {
         );
       expect(wormholeMessage).is.not.null;
 
+      // sign the Wormhole message
       const encodedWormholeMessage = Uint8Array.from(
         guardians.addSignatures(wormholeMessage!, [0])
       );
@@ -458,14 +486,19 @@ describe("Circle Integration Test", () => {
     });
 
     it("Should Redeem Tokens With Payload On Ethereum", async () => {
+      // create RedeemParameters struct to invoke the target contract with
       const redeemParameters: RedeemParameters = {
         circleBridgeMessage: localVariables.circleBridgeMessage!,
         circleAttestation: localVariables.circleAttestation!,
         encodedWormholeMessage: localVariables.encodedWormholeMessage!,
       };
 
+      // NOTICE: don't clear the localVariables object, the values are used in the next test
+
+      // grab the balance before redeeming the transfer
       const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
 
+      // redeem the transfer
       const receipt = await ethCircleIntegration
         .redeemTokensWithPayload(redeemParameters)
         .then(async (tx) => {
@@ -480,21 +513,25 @@ describe("Circle Integration Test", () => {
       expect(receipt).is.not.null;
 
       // confirm expected balance change
-      const balanceAfter = await ethUsdc.balanceOf(avaxWallet.address);
+      const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
       expect(balanceAfter.sub(balanceBefore).eq(amountFromAvax)).is.true;
     });
 
     it("Should Not Redeem a Transfer More Than Once", async () => {
+      // Reuse the RedeemParameters from the previous test to try to redeem again
       const redeemParameters: RedeemParameters = {
         circleBridgeMessage: localVariables.circleBridgeMessage!,
         circleAttestation: localVariables.circleAttestation!,
         encodedWormholeMessage: localVariables.encodedWormholeMessage!,
       };
 
-      // balance before calling redeemTokensWithPayload
+      // clear the localVariables object
+      localVariables = {};
+
+      // grab the balance before redeeming the transfer
       const balanceBefore = await ethUsdc.balanceOf(ethWallet.address);
 
-      // try to submit a new guardian set including the zero address
+      // try to redeem the transfer again
       let failed: boolean = false;
       try {
         const receipt = await ethCircleIntegration
@@ -514,7 +551,7 @@ describe("Circle Integration Test", () => {
       expect(failed).is.true;
 
       // confirm expected balance change
-      const balanceAfter = await ethUsdc.balanceOf(avaxWallet.address);
+      const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
       expect(balanceAfter.eq(balanceBefore)).is.true;
     });
 
@@ -527,12 +564,11 @@ describe("Circle Integration Test", () => {
         mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
       };
       const batchId = 0; // opt out of batching
-      const payload = Buffer.from("Send with amount of zero :)");
+      const payload = Buffer.from("Send zero tokens :)");
 
-      // try to submit a new guardian set including the zero address
+      // try to initiate a transfer with an amount of zero
       let failed: boolean = false;
       try {
-        // call transferTokensWithPayload
         const receipt = await avaxCircleIntegration
           .transferTokensWithPayload(params, batchId, payload)
           .then(async (tx) => {
@@ -560,10 +596,9 @@ describe("Circle Integration Test", () => {
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending to bytes32(0) mintRecipient :)");
 
-      // try to submit a new guardian set including the zero address
+      // try to initiate a transfer to the zero address
       let failed: boolean = false;
       try {
-        // call transferTokensWithPayload
         const receipt = await avaxCircleIntegration
           .transferTokensWithPayload(params, batchId, payload)
           .then(async (tx) => {
@@ -591,10 +626,9 @@ describe("Circle Integration Test", () => {
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending an unregistered token :)");
 
-      // try to submit a new guardian set including the zero address
+      // try to initiate a transfer for an unregistered token
       let failed: boolean = false;
       try {
-        // call transferTokensWithPayload
         const receipt = await avaxCircleIntegration
           .transferTokensWithPayload(params, batchId, payload)
           .then(async (tx) => {
@@ -622,10 +656,9 @@ describe("Circle Integration Test", () => {
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending to an unregistered chain :)");
 
-      // try to submit a new guardian set including the zero address
+      // try to initiate a transfer to an unregistered CircleIntegration contract
       let failed: boolean = false;
       try {
-        // call transferTokensWithPayload
         const receipt = await avaxCircleIntegration
           .transferTokensWithPayload(params, batchId, payload)
           .then(async (tx) => {
@@ -648,19 +681,23 @@ describe("Circle Integration Test", () => {
       // initialize governance module
       const governance = new CircleGovernanceEmitter();
 
-      // store euroc address
+      // store EUROC address
       const eurocAddress = "0x53d80871b92dadeD34A4BdFA6838DdFC7f214240";
       const timestamp = getTimeNow();
       const chainId = await avaxCircleIntegration.chainId();
 
+      // publish an unsigned registerAcceptedToken governance message
       const published =
         governance.publishCircleIntegrationRegisterAcceptedToken(
           timestamp,
           chainId,
           eurocAddress
         );
+
+      // sign the governance message with the guardian key
       const signedMessage = guardians.addSignatures(published, [0]);
 
+      // register the token
       const receipt = await avaxCircleIntegration
         .registerAcceptedToken(signedMessage)
         .then((tx) => tx.wait())
@@ -671,7 +708,7 @@ describe("Circle Integration Test", () => {
         });
       expect(receipt).is.not.null;
 
-      // check state
+      // check state to confirm the token was registered
       const accepted = await avaxCircleIntegration.isAcceptedToken(
         eurocAddress
       );
@@ -687,10 +724,9 @@ describe("Circle Integration Test", () => {
       const batchId = 0; // opt out of batching
       const payload = Buffer.from("Sending an unregistered target token :)");
 
-      // try to submit a new guardian set including the zero address
+      // try to transfer with an unregistered target token
       let failed: boolean = false;
       try {
-        // call transferTokensWithPayload
         const receipt = await avaxCircleIntegration
           .transferTokensWithPayload(params, batchId, payload)
           .then(async (tx) => {
@@ -749,18 +785,18 @@ describe("Circle Integration Test", () => {
         const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
         expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
 
-        // Grab Circle message from logs
+        // grab Circle message from logs
         const circleMessage = await avaxCircleIntegration
           .circleTransmitter()
           .then((address) => findCircleMessageInLogs(receipt!.logs, address));
         expect(circleMessage).is.not.null;
 
-        // Grab attestation
+        // grab attestation
         const circleAttestation = circleAttester.attestMessage(
           ethers.utils.arrayify(circleMessage!)
         );
 
-        // Now grab the Wormhole Message
+        // now grab the Wormhole Message
         const wormholeMessage = await avaxCircleIntegration
           .wormhole()
           .then((address) =>
@@ -772,6 +808,7 @@ describe("Circle Integration Test", () => {
           );
         expect(wormholeMessage).is.not.null;
 
+        // sign the wormhole message with the guardian key
         const encodedWormholeMessage = Uint8Array.from(
           guardians.addSignatures(wormholeMessage!, [0])
         );
@@ -792,7 +829,7 @@ describe("Circle Integration Test", () => {
           ethProvider
         );
 
-        // connect to contract with invalid wallet for redemption
+        // connect to contract with new wallet for redemption
         const ethCircleIntegration = ICircleIntegration__factory.connect(
           readCircleIntegrationProxyAddress(ETH_FORK_CHAIN_ID),
           invalidEthWallet
@@ -818,6 +855,9 @@ describe("Circle Integration Test", () => {
         // confirm that the call failed
         expect(failed).is.true;
       }
+
+      // clear the localVariables object
+      localVariables = {};
     });
 
     it("Should Not Redeem Tokens With a Bad Message Pair", async () => {
@@ -861,18 +901,18 @@ describe("Circle Integration Test", () => {
           const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
           expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
 
-          // Grab Circle message from logs
+          // grab Circle message from logs
           const circleMessage = await avaxCircleIntegration
             .circleTransmitter()
             .then((address) => findCircleMessageInLogs(receipt!.logs, address));
           expect(circleMessage).is.not.null;
 
-          // Grab attestation
+          // grab attestation
           const circleAttestation = circleAttester.attestMessage(
             ethers.utils.arrayify(circleMessage!)
           );
 
-          // Now grab the Wormhole Message
+          // now grab the Wormhole Message
           const wormholeMessage = await avaxCircleIntegration
             .wormhole()
             .then((address) =>
@@ -884,6 +924,7 @@ describe("Circle Integration Test", () => {
             );
           expect(wormholeMessage).is.not.null;
 
+          // sign the wormhole message with the guardian key
           const encodedWormholeMessage = Uint8Array.from(
             guardians.addSignatures(wormholeMessage!, [0])
           );
@@ -925,6 +966,9 @@ describe("Circle Integration Test", () => {
         // confirm that the call failed
         expect(failed).is.true;
       }
+
+      // clear the localVariables object
+      localVariables = {};
     });
 
     it("Should Revert if Circle Receiver Call Fails", async () => {
@@ -967,18 +1011,13 @@ describe("Circle Integration Test", () => {
         const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
         expect(balanceBefore.sub(balanceAfter).eq(amountFromAvax)).is.true;
 
-        // Grab Circle message from logs
+        // grab Circle message from logs
         const circleMessage = await avaxCircleIntegration
           .circleTransmitter()
           .then((address) => findCircleMessageInLogs(receipt!.logs, address));
         expect(circleMessage).is.not.null;
 
-        // Grab attestation
-        const circleAttestation = circleAttester.attestMessage(
-          ethers.utils.arrayify(circleMessage!)
-        );
-
-        // Now grab the Wormhole Message
+        // now grab the Wormhole Message
         const wormholeMessage = await avaxCircleIntegration
           .wormhole()
           .then((address) =>
@@ -990,6 +1029,7 @@ describe("Circle Integration Test", () => {
           );
         expect(wormholeMessage).is.not.null;
 
+        // sign the wormhole message with the guardian key
         const encodedWormholeMessage = Uint8Array.from(
           guardians.addSignatures(wormholeMessage!, [0])
         );
@@ -1062,7 +1102,6 @@ describe("Circle Integration Test", () => {
     });
 
     it("Should Transfer Tokens With Payload On Ethereum", async () => {
-      // set up the mock Integration contract
       // define transferTokensWithPayload function arguments
       const params: TransferParameters = {
         token: ETH_USDC_TOKEN_ADDRESS,
@@ -1104,18 +1143,18 @@ describe("Circle Integration Test", () => {
       const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
       expect(balanceBefore.sub(balanceAfter).eq(amountFromEth)).is.true;
 
-      // Grab Circle message from logs
+      // grab Circle message from logs
       const circleMessage = await ethCircleIntegration
         .circleTransmitter()
         .then((address) => findCircleMessageInLogs(receipt!.logs, address));
       expect(circleMessage).is.not.null;
 
-      // Grab attestation
+      // grab attestation
       const circleAttestation = circleAttester.attestMessage(
         ethers.utils.arrayify(circleMessage!)
       );
 
-      // Now grab the Wormhole Message
+      // now grab the Wormhole Message
       const wormholeMessage = await ethCircleIntegration
         .wormhole()
         .then((address) =>
@@ -1127,10 +1166,12 @@ describe("Circle Integration Test", () => {
         );
       expect(wormholeMessage).is.not.null;
 
+      // sign the wormhole message with the guardian key
       const encodedWormholeMessage = Uint8Array.from(
         guardians.addSignatures(wormholeMessage!, [0])
       );
 
+      // save redeem parameters and custom payload
       localVariables.circleBridgeMessage = circleMessage!;
       localVariables.circleAttestation = circleAttestation!;
       localVariables.encodedWormholeMessage = encodedWormholeMessage;
@@ -1138,15 +1179,18 @@ describe("Circle Integration Test", () => {
     });
 
     it("Should Redeem Tokens Via Mock Integration Contract on Avax and Verify the Saved Payload", async () => {
+      // create RedeemParameters struct to invoke the target contract with
       const redeemParameters: RedeemParameters = {
         circleBridgeMessage: localVariables.circleBridgeMessage!,
         circleAttestation: localVariables.circleAttestation!,
         encodedWormholeMessage: localVariables.encodedWormholeMessage!,
       };
 
+      // grab USDC balance before redeeming the token transfer
       const balanceBefore = await avaxUsdc.balanceOf(avaxMockWallet.address);
 
-      // invoke the mock contract with the trusted sender wallet (shares address with eth wallet)
+      // Invoke the mock contract with the trusted sender wallet,
+      // which shares address with eth wallet.
       const receipt = await avaxMockIntegration
         .redeemTokensWithPayload(redeemParameters, avaxMockWallet.address)
         .then(async (tx) => {
@@ -1176,6 +1220,9 @@ describe("Circle Integration Test", () => {
           return null;
         });
       expect(savedPayload).is.equal(localVariables.payload);
+
+      // clear the localVariables object
+      localVariables = {};
     });
   });
 });
