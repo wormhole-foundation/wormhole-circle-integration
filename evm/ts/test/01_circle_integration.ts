@@ -540,7 +540,6 @@ describe("Circle Integration Test", () => {
             const receipt = await tx.wait();
             return receipt;
           });
-        expect(receipt).is.not.null;
       } catch (e: any) {
         expect(e.error.reason, "execution reverted: message already consumed")
           .to.be.equal;
