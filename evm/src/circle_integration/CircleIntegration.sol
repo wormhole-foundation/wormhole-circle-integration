@@ -13,7 +13,7 @@ import {CircleIntegrationGovernance} from "./CircleIntegrationGovernance.sol";
 import {CircleIntegrationMessages} from "./CircleIntegrationMessages.sol";
 
 /**
- * @notice This contract burns and mints USDC by using Circle's Cross-Chain Transfer Protocol. It also emits
+ * @notice This contract burns and mints Circle-supported tokens by using Circle's Cross-Chain Transfer Protocol. It also emits
  * Wormhole messages with arbitrary payloads to allow for additional composability when performing cross-chain
  * transfers of Circle-suppored assets.
  */
@@ -21,7 +21,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     using BytesLib for bytes;
 
     /**
-     * @notice `transferTokensWithPayload` calls the Circle Bridge contract to burn USDC. It emits
+     * @notice `transferTokensWithPayload` calls the Circle Bridge contract to burn Circle-supported tokens. It emits
      * a Wormhole message containing a user-specified payload with instructions for what to do with
      * the Circle-supported assets once they have been minted on the target chain.
      * @dev reverts if:
