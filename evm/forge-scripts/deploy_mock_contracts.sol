@@ -17,7 +17,7 @@ contract ContractScript is Script {
         // begin sending transactions
         vm.startBroadcast();
 
-        // HelloWorld.sol
+        // MockIntegration.sol
         deployMockIntegration();
 
         // finished
