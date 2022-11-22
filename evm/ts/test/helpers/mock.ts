@@ -1,10 +1,10 @@
-import { coalesceChainId, tryNativeToHexString } from "@certusone/wormhole-sdk";
+import {coalesceChainId, tryNativeToHexString} from "@certusone/wormhole-sdk";
 import {
   GovernanceEmitter,
   MockEmitter,
 } from "@certusone/wormhole-sdk/lib/cjs/mock";
-import { ethers } from "ethers";
-import { DepositWithPayload, ICircleIntegration } from "../../src";
+import {ethers} from "ethers";
+import {DepositWithPayload, ICircleIntegration} from "../../src";
 
 export interface Transfer {
   token: string;
@@ -51,6 +51,24 @@ export class CircleGovernanceEmitter extends GovernanceEmitter {
     super(
       "0000000000000000000000000000000000000000000000000000000000000004",
       startSequence
+    );
+  }
+
+  publishCircleIntegrationUpdateFinality(
+    timestamp: number,
+    chain: number,
+    finality: number,
+    uptickSequence: boolean = true
+  ) {
+    const payload = Buffer.alloc(1);
+    payload.writeUIntBE(finality, 0, 1);
+    return this.publishGovernanceMessage(
+      timestamp,
+      "CircleIntegration",
+      payload,
+      1,
+      chain,
+      uptickSequence
     );
   }
 

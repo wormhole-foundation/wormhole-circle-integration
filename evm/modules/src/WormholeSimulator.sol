@@ -133,7 +133,11 @@ contract WormholeSimulator {
         );
     }
 
-    function signObservation(uint256 guardian, IWormhole.VM memory wormholeMessage) public returns (bytes memory) {
+    function signObservation(uint256 guardian, IWormhole.VM memory wormholeMessage)
+        public
+        view
+        returns (bytes memory)
+    {
         require(guardian != 0, "devnetGuardian is zero address");
 
         bytes memory body = encodeObservation(wormholeMessage);
@@ -155,7 +159,7 @@ contract WormholeSimulator {
         );
     }
 
-    function signDevnetObservation(IWormhole.VM memory wormholeMessage) public returns (bytes memory) {
+    function signDevnetObservation(IWormhole.VM memory wormholeMessage) public view returns (bytes memory) {
         return signObservation(devnetGuardianPK, wormholeMessage);
     }
 
@@ -178,6 +182,7 @@ contract WormholeSimulator {
 
     function fetchSignedMessageFromLogs(Vm.Log memory log, uint16 emitterChainId, bytes32 emitterAddress)
         public
+        view
         returns (bytes memory)
     {
         // Create message instance
