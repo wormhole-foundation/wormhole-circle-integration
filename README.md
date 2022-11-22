@@ -1,4 +1,4 @@
-# Wormhole-Circle-Integration
+# Wormhole Circle Integration
 
 Wormhole's Circle Integration smart contracts enable composable cross-chain transfers of Circle supported assets by pairing Circle's [Cross-Chain Transfer Protocol](https://www.circle.com/en/pressroom/circle-enables-usdc-interoperability-for-developers-with-the-launch-of-cross-chain-transfer-protocol) with Wormhole's generic-messaging layer.
 
