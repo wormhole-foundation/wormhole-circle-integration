@@ -211,7 +211,7 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
     function verifyAndConsumeGovernanceMessage(bytes memory encodedMessage, uint8 action)
         internal
-        returns (bytes memory payload)
+        returns (bytes memory)
     {
         // verify the governance message
         (bytes32 messageHash, bytes memory payload) = verifyGovernanceMessage(encodedMessage, action);

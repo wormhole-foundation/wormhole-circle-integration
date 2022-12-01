@@ -21,6 +21,14 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     using BytesLib for bytes;
 
     /**
+     * @notice Emitted when Circle-support assets have been minted to the mintRecipient
+     * @param emitterChainId Wormhole chain ID of emitter contract on source chain
+     * @param emitterAddress Address (bytes32 zero-left-padded) of emitter on source chain
+     * @param sequence Sequence of Wormhole message used to mint tokens
+     */
+    event Redeemed(uint16 indexed emitterChainId, bytes32 indexed emitterAddress, uint64 indexed sequence);
+
+    /**
      * @notice `transferTokensWithPayload` calls the Circle Bridge contract to burn Circle-supported tokens. It emits
      * a Wormhole message containing a user-specified payload with instructions for what to do with
      * the Circle-supported assets once they have been minted on the target chain.
@@ -175,6 +183,9 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // call the circle bridge to mint tokens to the recipient
         bool success = circleTransmitter().receiveMessage(params.circleBridgeMessage, params.circleAttestation);
         require(success, "CIRCLE_INTEGRATION: failed to mint tokens");
+
+        // emit Redeemed event
+        emit Redeemed(verifiedMessage.emitterChainId, verifiedMessage.emitterAddress, verifiedMessage.sequence);
     }
 
     function verifyWormholeRedeemMessage(bytes memory encodedMessage) internal returns (IWormhole.VM memory) {

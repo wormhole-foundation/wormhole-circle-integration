@@ -60,6 +60,24 @@ export function findWormholeMessageInLogs(
   return null;
 }
 
+export function findRedeemEventInLogs(
+  logs: ethers.providers.Log[],
+  circleIntegrationAddress: string
+): ethers.utils.Result {
+  let result: ethers.utils.Result = {} as ethers.utils.Result;
+  for (const log of logs) {
+    if (log.address == circleIntegrationAddress) {
+      const iface = new ethers.utils.Interface([
+        "event Redeemed(uint16 indexed emitterChainId, bytes32 indexed emitterAddress, uint64 indexed sequence)",
+      ]);
+
+      result = iface.parseLog(log).args;
+      break;
+    }
+  }
+  return result;
+}
+
 export class MockCircleAttester {
   privateKey: string;
 
