@@ -37,12 +37,14 @@ contract ContractScript is Script {
         circleBridge = ICircleBridge(vm.envAddress("RELEASE_CIRCLE_BRIDGE_ADDRESS"));
     }
 
+    function deployCircleIntegrationImplementation() public {
+        // next Implementation
+        implementation = new CircleIntegrationImplementation();
+    }
+
     function deployCircleIntegration() public {
         // first Setup
         setup = new CircleIntegrationSetup();
-
-        // next Implementation
-        implementation = new CircleIntegrationImplementation();
 
         // setup Proxy using Implementation
         proxy = new CircleIntegrationProxy(
@@ -62,6 +64,9 @@ contract ContractScript is Script {
     function run() public {
         // begin sending transactions
         vm.startBroadcast();
+
+        // deploy Circle Integration implementation
+        deployCircleIntegrationImplementation();
 
         // deploy Circle Integration proxy
         deployCircleIntegration();

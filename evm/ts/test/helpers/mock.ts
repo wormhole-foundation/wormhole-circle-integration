@@ -137,4 +137,27 @@ export class CircleGovernanceEmitter extends GovernanceEmitter {
       uptickSequence
     );
   }
+
+  publishCircleIntegrationUpgradeContract(
+    timestamp: number,
+    chain: number,
+    newImplementation: string,
+    uptickSequence: boolean = true
+  ) {
+    const payload = Buffer.alloc(32);
+    payload.write(
+      tryNativeToHexString(newImplementation, "ethereum"),
+      0,
+      "hex"
+    );
+
+    return this.publishGovernanceMessage(
+      timestamp,
+      "CircleIntegration",
+      payload,
+      5,
+      chain,
+      uptickSequence
+    );
+  }
 }

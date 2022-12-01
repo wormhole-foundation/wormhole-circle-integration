@@ -161,4 +161,45 @@ async function updateFinality() {
   expect(receipt).is.not.null;
 }
 
-updateFinality();
+async function upgradeImplementation() {
+  // MockGuardians and MockCircleAttester objects
+  const guardians = new MockGuardians(
+    await wormhole.getCurrentGuardianSetIndex(),
+    [process.env.TESTNET_GUARDIAN_KEY!]
+  );
+
+  const timestamp = getTimeNow();
+  const chainId = Number(process.env.SOURCE_CHAIN_ID!);
+
+  // new implementation
+  const newImplementation = process.env.NEW_IMPLEMENTATION!;
+
+  // create unsigned registerAcceptedToken governance message
+  const published = governance.publishCircleIntegrationUpgradeContract(
+    timestamp,
+    chainId,
+    newImplementation
+  );
+
+  // sign governance message with guardian key
+  const signedMessage = guardians.addSignatures(published, [0]);
+
+  // register the token
+  const receipt = await circleIntegration
+    .upgradeContract(signedMessage)
+    .then((tx: ethers.ContractTransaction) => tx.wait())
+    .catch((msg: string) => {
+      // should not happen
+      console.log(msg);
+      return null;
+    });
+  expect(receipt).is.not.null;
+
+  // check contract state to verify the registration
+  const isInitialized = await circleIntegration.isInitialized(
+    newImplementation
+  );
+  expect(isInitialized).is.true;
+}
+
+upgradeImplementation();
