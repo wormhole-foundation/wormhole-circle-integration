@@ -17,11 +17,14 @@ import {
   AVAX_LOCALHOST,
   ETH_FORK_CHAIN_ID,
   AVAX_FORK_CHAIN_ID,
+  ETH_WORMHOLE_ADDRESS,
+  AVAX_WORMHOLE_ADDRESS,
 } from "./helpers/consts";
 import {
   ICircleIntegration__factory,
   IUSDC__factory,
   IMockIntegration__factory,
+  IWormhole__factory,
 } from "../src/ethers-contracts";
 import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {RedeemParameters, TransferParameters} from "../src";
@@ -34,6 +37,7 @@ import {
   readCircleIntegrationProxyAddress,
   readMockIntegrationAddress,
   findWormholeMessageInLogs,
+  findRedeemEventInLogs,
 } from "./helpers/utils";
 
 describe("Circle Integration Test", () => {
@@ -68,6 +72,16 @@ describe("Circle Integration Test", () => {
     GUARDIAN_PRIVATE_KEY,
   ]);
   const circleAttester = new MockCircleAttester(GUARDIAN_PRIVATE_KEY);
+
+  // Wormhole contracts
+  const ethWormhole = IWormhole__factory.connect(
+    ETH_WORMHOLE_ADDRESS,
+    ethWallet
+  );
+  const avaxWormhole = IWormhole__factory.connect(
+    AVAX_WORMHOLE_ADDRESS,
+    avaxWallet
+  );
 
   describe("Registrations", () => {
     // produces governance VAAs for CircleAttestation contract
@@ -407,6 +421,22 @@ describe("Circle Integration Test", () => {
         });
       expect(receipt).is.not.null;
 
+      // parse the wormhole message
+      const parsedMessage = await avaxWormhole.parseVM(
+        redeemParameters.encodedWormholeMessage
+      );
+
+      // fetch the Redeem event emitted by the contract
+      const event = findRedeemEventInLogs(
+        receipt!.logs,
+        avaxCircleIntegration.address
+      );
+      expect(event.emitterChainId).to.equal(parsedMessage.emitterChainId);
+      expect(event.emitterAddress).to.equal(parsedMessage.emitterAddress);
+      expect(event.sequence.toString()).to.equal(
+        parsedMessage.sequence.toString()
+      );
+
       // confirm expected balance change
       const balanceAfter = await avaxUsdc.balanceOf(avaxWallet.address);
       expect(balanceAfter.sub(balanceBefore).eq(amountFromEth)).is.true;
@@ -511,6 +541,22 @@ describe("Circle Integration Test", () => {
           return null;
         });
       expect(receipt).is.not.null;
+
+      // parse the wormhole message
+      const parsedMessage = await ethWormhole.parseVM(
+        redeemParameters.encodedWormholeMessage
+      );
+
+      // fetch the Redeem event emitted by the contract
+      const event = findRedeemEventInLogs(
+        receipt!.logs,
+        ethCircleIntegration.address
+      );
+      expect(event.emitterChainId).to.equal(parsedMessage.emitterChainId);
+      expect(event.emitterAddress).to.equal(parsedMessage.emitterAddress);
+      expect(event.sequence.toString()).to.equal(
+        parsedMessage.sequence.toString()
+      );
 
       // confirm expected balance change
       const balanceAfter = await ethUsdc.balanceOf(ethWallet.address);
