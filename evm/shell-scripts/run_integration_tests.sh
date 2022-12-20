@@ -27,22 +27,24 @@ mkdir -p cache
 cp -v foundry.toml cache/foundry.toml
 cp -v foundry-test.toml foundry.toml
 
+EVM_ROOT=$(dirname $0)/../
+
 echo "deploy contracts"
 RELEASE_WORMHOLE_ADDRESS=$ETH_WORMHOLE_ADDRESS \
 RELEASE_CIRCLE_BRIDGE_ADDRESS=$ETH_CIRCLE_BRIDGE_ADDRESS \
-forge script forge-scripts/deploy_contracts.sol \
+forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
     --rpc-url http://localhost:8545 \
     --private-key $PRIVATE_KEY \
     --broadcast --slow > deploy.out 2>&1
 
 RELEASE_WORMHOLE_ADDRESS=$AVAX_WORMHOLE_ADDRESS \
 RELEASE_CIRCLE_BRIDGE_ADDRESS=$AVAX_CIRCLE_BRIDGE_ADDRESS \
-forge script forge-scripts/deploy_contracts.sol \
+forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
     --rpc-url http://localhost:8546 \
     --private-key $PRIVATE_KEY \
     --broadcast --slow >> deploy.out 2>&1
 
-forge script forge-scripts/deploy_mock_contracts.sol \
+forge script $EVM_ROOT/forge-scripts/deploy_mock_contracts.sol \
     --rpc-url http://localhost:8546 \
     --private-key $PRIVATE_KEY \
     --broadcast --slow >> deploy.out 2>&1
@@ -50,7 +52,7 @@ forge script forge-scripts/deploy_mock_contracts.sol \
 echo "overriding foundry.toml"
 mv -v cache/foundry.toml foundry.toml
 
-## run tests here
+echo "running tests (found in ts/test)"
 npx ts-mocha -t 1000000 ts/test/*.ts
 
 # nuke
