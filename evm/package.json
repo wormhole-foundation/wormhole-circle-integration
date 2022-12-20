@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^18.8.4",
+    "@types/node": "^18.11.17",
     "chai": "^4.3.6",
     "ethers": "^5.7.1"
   },
@@ -13,8 +13,10 @@
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
     "@openzeppelin/contracts": "^4.7.3",
     "@typechain/ethers-v5": "^10.1.1",
+    "@types/argparse": "^2.0.10",
     "@types/chai": "^4.3.3",
     "@types/mocha": "^9.1.1",
+    "argparse": "^2.0.1",
     "axios": "^1.1.3",
     "dotenv": "^16.0.3",
     "elliptic": "^6.5.4",
@@ -26,6 +28,8 @@
     "typescript": "^4.8.3"
   },
   "scripts": {
-    "build-types": "bash shell-scripts/make_ethers_types.sh"
+    "build-types": "bash shell-scripts/make_ethers_types.sh",
+    "deploy-implementation-only": "bash shell-scripts/deploy_implementation_only.sh",
+    "upgrade-proxy": "bash shell-scripts/upgrade_proxy.sh"
   }
 }

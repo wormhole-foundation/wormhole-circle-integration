@@ -55,5 +55,8 @@ mv -v cache/foundry.toml foundry.toml
 echo "running tests (found in ts/test)"
 npx ts-mocha -t 1000000 ts/test/*.ts
 
+echo "running 'Circle Integration Send and Receive' again after upgrade"
+npx ts-mocha -t 1000000 ts/test/02_send_receive.ts
+
 # nuke
 pkill anvil
