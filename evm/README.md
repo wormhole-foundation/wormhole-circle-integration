@@ -34,7 +34,7 @@ Then run the following command to deploy (and set up) the proxy contract:
 
 ```
 # sample deployment command
-. env/put_your_env_file_here.env && PRIVATE_KEY=put_your_private_key_here bash shell-scripts/deploy_circle_integration.sh
+. env/put_your_env_file_here.env && PRIVATE_KEY=put_your_private_key_here bash shell-scripts/deploy_contracts.sh
 ```
 
 ## Test Suite
