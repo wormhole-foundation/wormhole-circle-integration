@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 import {IMessageTransmitter} from "./IMessageTransmitter.sol";
 
 interface ICircleBridge {
-    event MessageSent(bytes message);
-
     /**
      * @notice Deposits and burns tokens from sender to be minted on destination domain.
      * Emits a `DepositForBurn` event.
