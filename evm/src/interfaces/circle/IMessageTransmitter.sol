@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 interface IMessageTransmitter {
+    event MessageSent(bytes message);
+
     /**
      * @notice Emitted when tokens are minted
      * @param _mintRecipient recipient address of minted tokens
