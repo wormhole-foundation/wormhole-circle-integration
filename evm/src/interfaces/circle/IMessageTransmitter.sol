@@ -75,4 +75,6 @@ interface IMessageTransmitter {
     function disableAttester(address _attester) external;
 
     function enableAttester(address _attester) external;
+
+    function setSignatureThreshold(uint256 newSignatureThreshold) external;
 }
