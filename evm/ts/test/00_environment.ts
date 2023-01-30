@@ -180,7 +180,17 @@ describe("Environment Test", () => {
               provider.getSigner(attesterManager)
             )
           );
-        const existingAttester = await messageTransmitter.getEnabledAttester(0);
+
+        // update the number of required attestations to one
+        const receipt = await messageTransmitter
+          .setSignatureThreshold(ethers.BigNumber.from("1"))
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
 
         // enable devnet guardian as attester
         {
@@ -195,23 +205,13 @@ describe("Environment Test", () => {
           expect(receipt).is.not.null;
         }
 
-        // disable existing attester
-        {
-          const receipt = await messageTransmitter
-            .disableAttester(existingAttester)
-            .then((tx) => tx.wait())
-            .catch((msg) => {
-              // should not happen
-              console.log(msg);
-              return null;
-            });
-          expect(receipt).is.not.null;
-        }
-
         // stop prank
         await provider.send("anvil_stopImpersonatingAccount", [
           attesterManager,
         ]);
+
+        // fetch number of attesters
+        const numAttesters = await messageTransmitter.getNumEnabledAttesters();
 
         // confirm that the attester address swap was successful
         const attester = await circleBridge
@@ -220,7 +220,9 @@ describe("Environment Test", () => {
             IMessageTransmitter__factory.connect(address, provider)
           )
           .then((messageTransmitter) =>
-            messageTransmitter.getEnabledAttester(0)
+            messageTransmitter.getEnabledAttester(
+              numAttesters.sub(ethers.BigNumber.from("1"))
+            )
           );
         expect(myAttester.address).to.equal(attester);
       });
@@ -426,23 +428,21 @@ describe("Environment Test", () => {
           );
         const existingAttester = await messageTransmitter.getEnabledAttester(0);
 
+        // update the number of required attestations to one
+        const receipt = await messageTransmitter
+          .setSignatureThreshold(ethers.BigNumber.from("1"))
+          .then((tx) => tx.wait())
+          .catch((msg) => {
+            // should not happen
+            console.log(msg);
+            return null;
+          });
+        expect(receipt).is.not.null;
+
         // enable devnet guardian as attester
         {
           const receipt = await messageTransmitter
             .enableAttester(myAttester.address)
-            .then((tx) => tx.wait())
-            .catch((msg) => {
-              // should not happen
-              console.log(msg);
-              return null;
-            });
-          expect(receipt).is.not.null;
-        }
-
-        // disable existing attester
-        {
-          const receipt = await messageTransmitter
-            .disableAttester(existingAttester)
             .then((tx) => tx.wait())
             .catch((msg) => {
               // should not happen
@@ -457,6 +457,9 @@ describe("Environment Test", () => {
           attesterManager,
         ]);
 
+        // fetch number of attesters
+        const numAttesters = await messageTransmitter.getNumEnabledAttesters();
+
         // confirm that the attester address swap was successful
         const attester = await circleBridge
           .localMessageTransmitter()
@@ -464,7 +467,9 @@ describe("Environment Test", () => {
             IMessageTransmitter__factory.connect(address, provider)
           )
           .then((messageTransmitter) =>
-            messageTransmitter.getEnabledAttester(0)
+            messageTransmitter.getEnabledAttester(
+              numAttesters.sub(ethers.BigNumber.from("1"))
+            )
           );
         expect(myAttester.address).to.equal(attester);
       });
