@@ -134,6 +134,12 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         address token = readAddressFromBytes32(payload, 35);
         require(token != address(0), "token is zero address");
 
+        // confirm the token is accepted by the CCTP contract
+        require(
+            circleTokenMinter().burnLimitsPerMessage(token) > 0,
+            "token not accepted by CCTP"
+        );
+
         // update the acceptedTokens mapping
         addAcceptedToken(token);
     }

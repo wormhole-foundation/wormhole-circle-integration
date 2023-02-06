@@ -6,6 +6,7 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
+import {ITokenMinter} from "../interfaces/circle/ITokenMinter.sol";
 
 import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
 
@@ -28,9 +29,17 @@ contract CircleIntegrationSetup is CircleIntegrationSetters, ERC1967Upgrade, Con
         setCircleBridge(circleBridgeAddress);
         setGovernance(governanceChainId, governanceContract);
 
-        IMessageTransmitter messageTransmitter = ICircleBridge(circleBridgeAddress).localMessageTransmitter();
+        // Cache circle bridge
+        ICircleBridge circleBridge = ICircleBridge(circleBridgeAddress);
+
+        // Circle message transmitter contract
+        IMessageTransmitter messageTransmitter = circleBridge.localMessageTransmitter();
         setCircleTransmitter(address(messageTransmitter));
         setLocalDomain(messageTransmitter.localDomain());
+
+        // Circle token minter contract
+        ITokenMinter tokenMinter = circleBridge.localMinter();
+        setCircleTokenMinter(address(tokenMinter));
 
         setEvmChain(block.chainid);
 

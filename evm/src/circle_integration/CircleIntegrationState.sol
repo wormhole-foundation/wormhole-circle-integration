@@ -30,6 +30,9 @@ contract CircleIntegrationStorage {
         /// @dev address of the Circle Message Transmitter on this chain
         address circleTransmitterAddress;
 
+        /// @dev address of the Circle Token Minter on this chain
+        address circleTokenMinterAddress;
+
         /// @dev mapping of initialized implementation (logic) contracts
         mapping(address => bool) initializedImplementations;
 

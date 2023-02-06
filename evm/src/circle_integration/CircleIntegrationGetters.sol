@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
+import {ITokenMinter} from "../interfaces/circle/ITokenMinter.sol";
 
 import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
 
@@ -55,6 +56,14 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
      */
     function circleTransmitter() public view returns (IMessageTransmitter) {
         return IMessageTransmitter(_state.circleTransmitterAddress);
+    }
+
+    /**
+     * @notice Circle Token Minter contract interface
+     * @return ITokenMinter interface
+     */
+    function circleTokenMinter() public view returns (ITokenMinter) {
+        return ITokenMinter(_state.circleTokenMinterAddress);
     }
 
     /**

@@ -655,13 +655,13 @@ contract CircleIntegrationTest is Test {
     }
 
     function testCannotRegisterTargetChainTokenInvalidLength(
-        address sourceToken,
         uint16 targetChain,
         bytes32 targetToken
     ) public {
-        vm.assume(sourceToken != address(0));
         vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
         vm.assume(targetToken != bytes32(0));
+
+        address sourceToken = address(usdc);
 
         // First register source token
         registerToken(sourceToken);
@@ -747,8 +747,28 @@ contract CircleIntegrationTest is Test {
         circleIntegration.registerAcceptedToken(encodedMessage);
     }
 
-    function testRegisterAcceptedToken(address tokenAddress) public {
-        vm.assume(tokenAddress != address(0));
+    function testCannotRegisterAcceptedTokenTokenNotAcceptedByCircle(address tokenAddress) public {
+        vm.assume(tokenAddress != address(0) && tokenAddress != address(usdc));
+
+        // Should not already be accepted.
+        assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
+
+        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+            wormholeSimulator.governanceChainId(),
+            wormholeSimulator.governanceContract(),
+            GOVERNANCE_MODULE,
+            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
+            circleIntegration.chainId(),
+            abi.encodePacked(bytes12(0), tokenAddress)
+        );
+
+        // You shall not pass!
+        vm.expectRevert("token not accepted by CCTP");
+        circleIntegration.registerAcceptedToken(encodedMessage);
+    }
+
+    function testRegisterAcceptedToken() public {
+        address tokenAddress = address(usdc);
 
         // Should not already be accepted.
         assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
@@ -819,9 +839,10 @@ contract CircleIntegrationTest is Test {
         }
     }
 
-    function testCannotRegisterTargetChainTokenInvalidTargetChain(address sourceToken, bytes32 targetToken) public {
-        vm.assume(sourceToken != address(0));
+    function testCannotRegisterTargetChainTokenInvalidTargetChain(bytes32 targetToken) public {
         vm.assume(targetToken != bytes32(0));
+
+        address sourceToken = address(usdc);
 
         // First register source token
         registerToken(sourceToken);
@@ -877,9 +898,10 @@ contract CircleIntegrationTest is Test {
         }
     }
 
-    function testCannotRegisterTargetChainTokenInvalidTargetToken(address sourceToken, uint16 targetChain) public {
-        vm.assume(sourceToken != address(0));
+    function testCannotRegisterTargetChainTokenInvalidTargetToken(uint16 targetChain) public {
         vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
+
+        address sourceToken = address(usdc);
 
         // First register source token
         registerToken(sourceToken);
@@ -910,10 +932,11 @@ contract CircleIntegrationTest is Test {
         circleIntegration.registerTargetChainToken(encodedMessage);
     }
 
-    function testRegisterTargetChainToken(address sourceToken, uint16 targetChain, bytes32 targetToken) public {
-        vm.assume(sourceToken != address(0));
+    function testRegisterTargetChainToken(uint16 targetChain, bytes32 targetToken) public {
         vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
         vm.assume(targetToken != bytes32(0));
+
+        address sourceToken = address(usdc);
 
         // First register source token
         registerToken(sourceToken);
@@ -1087,128 +1110,51 @@ contract CircleIntegrationTest is Test {
         );
     }
 
-    // function testTransferTokensWithPayload(uint256 amount, uint16 targetChain, bytes32 mintRecipient) public {
-    //     vm.assume(amount > 0 && amount <= maxUSDCAmountToMint());
-    //     vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
-    //     vm.assume(mintRecipient != bytes32(0));
+    function testCannotTransferTokensWithUnregisteredTargetToken() public {
+        // test variables
+        address token = address(usdc);
+        uint256 amount = 1e8;
+        uint16 targetChain = 6;
+        uint16 targetDomain = 1;
+        bytes32 targetEmitter = bytes32(uint256(uint160(makeAddr("targetAddress"))));
+        bytes32 mintRecipient = bytes32(uint256(uint160(makeAddr("mintRecipient"))));
 
-    //     registerContract(
-    //         targetChain,
-    //         0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef, // foreignEmitter
-    //         1 // domain
-    //     );
+        // reigster the target emitter
+        registerContract(targetChain, targetEmitter, targetDomain);
 
-    //     prepareCircleIntegrationTest(amount);
+        // register the accepted token
+        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+            wormholeSimulator.governanceChainId(),
+            wormholeSimulator.governanceContract(),
+            GOVERNANCE_MODULE,
+            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
+            circleIntegration.chainId(),
+            abi.encodePacked(bytes12(0), token)
+        );
+        circleIntegration.registerAcceptedToken(encodedMessage);
 
-    //     // Register target token
-    //     circleIntegration.registerTargetChainToken(
-    //         address(usdc), // sourceToken
-    //         targetChain,
-    //         foreignUsdc // targetToken
-    //     );
+        // Set up USDC token for test
+        if (amount > 0) {
+            // First mint USDC.
+            mintUSDC(amount);
 
-    //     // Record balance.
-    //     uint256 myBalanceBefore = usdc.balanceOf(address(this));
-    //     assertEq(usdc.balanceOf(address(circleIntegration)), 0, "CircleIntegration has balance");
+            // Next set allowance.
+            usdc.approve(address(circleIntegration), amount);
+        }
 
-    //     bytes memory payload = abi.encodePacked("All your base are belong to us");
+        // NOTE: do not register a target token
 
-    //     vm.recordLogs();
-
-    //     // Pass.
-    //     circleIntegration.transferTokensWithPayload(address(usdc), amount, targetChain, mintRecipient, payload);
-
-    //     // Prepare to check transaction logs for expected events.
-    //     Vm.Log[] memory entries = vm.getRecordedLogs();
-
-    //     // Circle's MessageSent value
-    //     bytes memory message = circleSimulator.findMessageSentInLogs(entries);
-
-    //     // Wormhole's LogMessagePublished values
-    //     (uint64 sequence, uint32 batchId, bytes memory wormholePayload, uint8 finality) =
-    //         wormholeSimulator.findLogMessagePublishedInLogs(entries);
-    //     assertEq(sequence, 0, "sequence != expected");
-    //     assertEq(batchId, 0, "batchId != expected");
-    //     assertEq(finality, circleIntegration.wormholeFinality(), "finality != circleIntegration.wormholeFinality()");
-
-    //     // Deserialize wormhole payload
-    //     CircleIntegrationSimulator.DepositWithPayload memory deposit =
-    //         circleSimulator.decodeDepositWithPayload(wormholePayload);
-    //     assertEq(
-    //         deposit.token,
-    //         circleIntegration.targetAcceptedToken(address(usdc), targetChain),
-    //         "deposit.token != expected"
-    //     );
-    //     assertEq(deposit.amount, amount, "deposit.amount != expected");
-    //     assertEq(deposit.sourceDomain, circleIntegration.localDomain(), "deposit.sourceDomain != expected");
-    //     assertEq(
-    //         deposit.targetDomain,
-    //         circleIntegration.getDomainFromChainId(targetChain),
-    //         "deposit.targetDomain != expected"
-    //     );
-    //     assertEq(deposit.nonce, 112396, "deposit.nonce != expected");
-    //     assertEq(deposit.mintRecipient, mintRecipient, "deposit.mintRecipient != expected");
-    //     assertEq(deposit.payload, payload, "deposit.payload != expected");
-
-    //     // My balance change should equal the amount transferred.
-    //     assertEq(myBalanceBefore - usdc.balanceOf(address(this)), amount, "mismatch in my balance");
-
-    //     // CircleIntegration's balance should not reflect having any USDC.
-    //     assertEq(usdc.balanceOf(address(circleIntegration)), 0, "CircleIntegration has new balance");
-    // }
-
-    // function borkedTestRedeemTokensWithPayload(uint16 foreignChain) public {
-    //     vm.assume(foreignChain > 0 && foreignChain != circleIntegration.chainId());
-
-    //     uint32 foreignDomain = 1;
-    //     // Register foreign CircleIntegration
-    //     registerContract(
-    //         foreignChain,
-    //         bytes32(uint256(uint160(address(circleIntegration)))), // foreignEmitter
-    //         foreignDomain // domain
-    //     );
-
-    //     uint256 amount = 42069;
-    //     uint64 availableNonce = uint64(vm.envUint("TESTING_LAST_NONCE"));
-
-    //     ICircleIntegration.RedeemParameters memory redeemParams;
-
-    //     redeemParams.circleBridgeMessage = abi.encodePacked(
-    //         messageTransmitter.version(),
-    //         foreignDomain,
-    //         circleIntegration.localDomain(),
-    //         availableNonce,
-    //         circleBridge.remoteCircleBridges(foreignDomain),
-    //         bytes32(uint256(uint160(address(circleBridge)))),
-    //         circleIntegration.getRegisteredEmitter(foreignChain), // expected caller
-    //         bytes4(0), // ???
-    //         foreignUsdc,
-    //         bytes32(uint256(uint160(address(this)))), // attester
-    //         amount
-    //     );
-    //     redeemParams.circleAttestation = circleSimulator.attestMessage(redeemParams.circleBridgeMessage);
-
-    //     IWormhole.VM memory wormholeMessage;
-    //     wormholeMessage.timestamp = uint32(block.timestamp);
-    //     wormholeMessage.nonce = 0;
-    //     wormholeMessage.emitterChainId = foreignChain;
-    //     wormholeMessage.emitterAddress = bytes32(uint256(uint160(address(circleIntegration))));
-    //     wormholeMessage.sequence = 0;
-    //     wormholeMessage.consistencyLevel = 1;
-    //     wormholeMessage.payload = circleSimulator.encodeDepositWithPayload(
-    //         CircleIntegrationStructs.DepositWithPayload({
-    //             token: foreignUsdc,
-    //             amount: amount,
-    //             sourceDomain: foreignDomain,
-    //             targetDomain: circleIntegration.localDomain(),
-    //             nonce: availableNonce,
-    //             fromAddress: bytes32(uint256(uint160(address(this)))),
-    //             mintRecipient: bytes32(uint256(uint160(address(this)))),
-    //             payload: abi.encodePacked("All your base are belong to us")
-    //         })
-    //     );
-    //     redeemParams.encodedWormholeMessage = wormholeSimulator.signDevnetObservation(wormholeMessage);
-
-    //     circleIntegration.redeemTokensWithPayload(redeemParams);
-    // }
+        // You shall not pass!
+        vm.expectRevert("target token not registered");
+        circleIntegration.transferTokensWithPayload(
+            ICircleIntegration.TransferParameters({
+                token: token,
+                amount: amount,
+                targetChain: targetChain,
+                mintRecipient: mintRecipient
+            }),
+            0, // batchId
+            abi.encodePacked("All your base are belong to us") // payload
+        );
+    }
 }

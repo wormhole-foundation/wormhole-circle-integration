@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: Apache 2
 pragma solidity ^0.8.0;
 
 import {IMessageTransmitter} from "./IMessageTransmitter.sol";
+import {ITokenMinter} from "./ITokenMinter.sol";
 
 interface ICircleBridge {
     /**
@@ -62,6 +63,8 @@ interface ICircleBridge {
         returns (bool);
 
     function localMessageTransmitter() external view returns (IMessageTransmitter);
+
+    function localMinter() external view returns (ITokenMinter);
 
     function remoteCircleBridges(uint32 domain) external view returns (bytes32);
 
