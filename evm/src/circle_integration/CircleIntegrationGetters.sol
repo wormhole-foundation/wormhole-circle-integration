@@ -85,16 +85,6 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
     }
 
     /**
-     * @notice Circle Bridge registered token on target blockchains boolean
-     * @param sourceToken Address of token on this chain
-     * @param chainId_ Wormhole chain ID of target chain
-     * @return TargetAcceptedToken bytes32
-     */
-    function targetAcceptedToken(address sourceToken, uint16 chainId_) public view returns (bytes32) {
-        return _state.targetAcceptedTokens[sourceToken][chainId_];
-    }
-
-    /**
      * @notice Circle domain to Wormhole chain ID
      * @param chainId_ Wormhole chain ID
      * @return CircleDomain uint32

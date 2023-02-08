@@ -68,8 +68,6 @@ interface ICircleIntegration {
 
     function localDomain() external view returns (uint32);
 
-    function targetAcceptedToken(address sourceToken, uint16 chainId_) external view returns (bytes32);
-
     function verifyGovernanceMessage(bytes memory encodedMessage, uint8 action)
         external
         view
@@ -83,8 +81,6 @@ interface ICircleIntegration {
     function registerEmitterAndDomain(bytes memory encodedMessage) external;
 
     function registerAcceptedToken(bytes memory encodedMessage) external;
-
-    function registerTargetChainToken(bytes memory encodedMessage) external;
 
     function upgradeContract(bytes memory encodedMessage) external;
 }

@@ -43,12 +43,8 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
     uint8 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN = 3;
     uint256 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN_LENGTH = 67;
 
-    // for registering Circle Bridge supported assets on other blockchains
-    uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
-    uint256 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH = 101;
-
     // for upgrading implementation (logic) contracts
-    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 5;
+    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 4;
     uint256 constant GOVERNANCE_UPGRADE_CONTRACT_LENGTH = 67;
 
     /**
@@ -142,39 +138,6 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
         // update the acceptedTokens mapping
         addAcceptedToken(token);
-    }
-
-    /**
-     * @notice `registerTargetChainToken` registers tokens on foreign chains that can be
-     * burned + minted via the Circle Bridge.
-     * @param encodedMessage Attested Wormhole governance message with the following
-     * relevant fields:
-     * - Field Bytes Type Index
-     * - sourceToken 32 bytes32 35
-     * - targetChainId 2 uint16 67
-     * - targetToken 32 bytes32 69
-     */
-    function registerTargetChainToken(bytes memory encodedMessage) public {
-        bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN);
-        require(payload.length == GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN_LENGTH, "invalid governance payload length");
-
-        // registering target chain tokens should only be relevant for this contract's chain ID
-        require(payload.toUint16(33) == chainId(), "invalid target chain");
-
-        // sourceToken at byte 35 (32 bytes, but last 20 is the address)
-        address sourceToken = readAddressFromBytes32(payload, 35);
-        require(isAcceptedToken(sourceToken), "source token not accepted");
-
-        // targetChain at byte 67
-        uint16 targetChain = payload.toUint16(67);
-        require(targetChain > 0 && targetChain != chainId(), "invalid target chain");
-
-        // targetToken at byte 69 (hehe)
-        bytes32 targetToken = payload.toBytes32(69);
-        require(targetToken != bytes32(0), "target token is zero address");
-
-        // update the targetAcceptedTokens mapping
-        addTargetAcceptedToken(sourceToken, targetChain, targetToken);
     }
 
     /**

@@ -9,13 +9,13 @@ fi
 # ethereum goerli testnet
 anvil \
     -m "myth like bonus scare over problem client lizard pioneer submit female collect" \
-    --port 8545 \
+    --port 8546 \
     --fork-url $ETH_FORK_RPC > anvil_eth.log &
 
 # avalanche fuji testnet
 anvil \
     -m "myth like bonus scare over problem client lizard pioneer submit female collect" \
-    --port 8546 \
+    --port 8547 \
     --fork-url $AVAX_FORK_RPC > anvil_avax.log &
 
 sleep 2
@@ -33,19 +33,19 @@ echo "deploy contracts"
 RELEASE_WORMHOLE_ADDRESS=$ETH_WORMHOLE_ADDRESS \
 RELEASE_CIRCLE_BRIDGE_ADDRESS=$ETH_CIRCLE_BRIDGE_ADDRESS \
 forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
-    --rpc-url http://localhost:8545 \
+    --rpc-url http://localhost:8546 \
     --private-key $PRIVATE_KEY \
     --broadcast --slow > deploy.out 2>&1
 
 RELEASE_WORMHOLE_ADDRESS=$AVAX_WORMHOLE_ADDRESS \
 RELEASE_CIRCLE_BRIDGE_ADDRESS=$AVAX_CIRCLE_BRIDGE_ADDRESS \
 forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
-    --rpc-url http://localhost:8546 \
+    --rpc-url http://localhost:8547 \
     --private-key $PRIVATE_KEY \
     --broadcast --slow >> deploy.out 2>&1
 
 forge script $EVM_ROOT/forge-scripts/deploy_mock_contracts.sol \
-    --rpc-url http://localhost:8546 \
+    --rpc-url http://localhost:8547 \
     --private-key $PRIVATE_KEY \
     --broadcast --slow >> deploy.out 2>&1
 

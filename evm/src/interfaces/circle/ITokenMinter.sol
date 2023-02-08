@@ -8,4 +8,6 @@ pragma solidity ^0.8.0;
  */
 interface ITokenMinter {
     function burnLimitsPerMessage(address token) external view returns (uint256);
+
+    function remoteTokensToLocalTokens(bytes32 sourceIdHash) external view returns (address);
 }

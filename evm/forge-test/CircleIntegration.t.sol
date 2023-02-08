@@ -26,8 +26,7 @@ contract CircleIntegrationTest is Test {
     uint8 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY = 1;
     uint8 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN = 2;
     uint8 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN = 3;
-    uint8 constant GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN = 4;
-    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 5;
+    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 4;
 
     // USDC
     IUSDC usdc;
@@ -654,39 +653,6 @@ contract CircleIntegrationTest is Test {
         }
     }
 
-    function testCannotRegisterTargetChainTokenInvalidLength(
-        uint16 targetChain,
-        bytes32 targetToken
-    ) public {
-        vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
-        vm.assume(targetToken != bytes32(0));
-
-        address sourceToken = address(usdc);
-
-        // First register source token
-        registerToken(sourceToken);
-
-        // Should not already exist.
-        assertEq(
-            circleIntegration.targetAcceptedToken(sourceToken, targetChain),
-            bytes32(0),
-            "target token already registered"
-        );
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), sourceToken, targetChain, targetToken, "But wait! There's more.")
-        );
-
-        // Now register target token.
-        vm.expectRevert("invalid governance payload length");
-        circleIntegration.registerTargetChainToken(encodedMessage);
-    }
-
     function testCannotRegisterAcceptedTokenInvalidLength(address tokenAddress) public {
         vm.assume(tokenAddress != address(0));
 
@@ -786,182 +752,6 @@ contract CircleIntegrationTest is Test {
         circleIntegration.registerAcceptedToken(encodedMessage);
 
         assertTrue(circleIntegration.isAcceptedToken(tokenAddress), "token not registered");
-    }
-
-    function testCannotRegisterTargetChainTokenInvalidSourceToken(
-        bytes12 garbage,
-        address sourceToken,
-        uint16 targetChain,
-        bytes32 targetToken
-    ) public {
-        vm.assume(garbage != bytes12(0));
-        vm.assume(sourceToken != address(0));
-        vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
-        vm.assume(targetToken != bytes32(0));
-
-        // Should not already exist.
-        assertEq(
-            circleIntegration.targetAcceptedToken(sourceToken, targetChain),
-            bytes32(0),
-            "target token already registered"
-        );
-
-        // First attempt to submit garbage source token
-        {
-            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-                wormholeSimulator.governanceChainId(),
-                wormholeSimulator.governanceContract(),
-                GOVERNANCE_MODULE,
-                GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-                circleIntegration.chainId(),
-                abi.encodePacked(garbage, sourceToken, targetChain, targetToken)
-            );
-
-            // You shall not pass!
-            vm.expectRevert("invalid address");
-            circleIntegration.registerTargetChainToken(encodedMessage);
-        }
-
-        // Now use legitimate-looking ERC20 address
-        {
-            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-                wormholeSimulator.governanceChainId(),
-                wormholeSimulator.governanceContract(),
-                GOVERNANCE_MODULE,
-                GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-                circleIntegration.chainId(),
-                abi.encodePacked(bytes12(0), sourceToken, targetChain, targetToken)
-            );
-
-            // You shall not pass!
-            vm.expectRevert("source token not accepted");
-            circleIntegration.registerTargetChainToken(encodedMessage);
-        }
-    }
-
-    function testCannotRegisterTargetChainTokenInvalidTargetChain(bytes32 targetToken) public {
-        vm.assume(targetToken != bytes32(0));
-
-        address sourceToken = address(usdc);
-
-        // First register source token
-        registerToken(sourceToken);
-
-        // Cannot register chain ID == 0
-        {
-            uint16 targetChain = 0;
-
-            // Should not already exist.
-            assertEq(
-                circleIntegration.targetAcceptedToken(sourceToken, targetChain),
-                bytes32(0),
-                "target token already registered"
-            );
-
-            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-                wormholeSimulator.governanceChainId(),
-                wormholeSimulator.governanceContract(),
-                GOVERNANCE_MODULE,
-                GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-                circleIntegration.chainId(),
-                abi.encodePacked(bytes12(0), sourceToken, targetChain, targetToken)
-            );
-
-            // You shall not pass!
-            vm.expectRevert("invalid target chain");
-            circleIntegration.registerTargetChainToken(encodedMessage);
-        }
-
-        // Cannot register chain ID == this chain's
-        {
-            uint16 targetChain = circleIntegration.chainId();
-
-            // Should not already exist.
-            assertEq(
-                circleIntegration.targetAcceptedToken(sourceToken, targetChain),
-                bytes32(0),
-                "target token already registered"
-            );
-
-            bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-                wormholeSimulator.governanceChainId(),
-                wormholeSimulator.governanceContract(),
-                GOVERNANCE_MODULE,
-                GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-                circleIntegration.chainId(),
-                abi.encodePacked(bytes12(0), sourceToken, targetChain, targetToken)
-            );
-
-            // You shall not pass!
-            vm.expectRevert("invalid target chain");
-            circleIntegration.registerTargetChainToken(encodedMessage);
-        }
-    }
-
-    function testCannotRegisterTargetChainTokenInvalidTargetToken(uint16 targetChain) public {
-        vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
-
-        address sourceToken = address(usdc);
-
-        // First register source token
-        registerToken(sourceToken);
-
-        // Should not already exist.
-        assertEq(
-            circleIntegration.targetAcceptedToken(sourceToken, targetChain),
-            bytes32(0),
-            "target token already registered"
-        );
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(
-                bytes12(0),
-                sourceToken,
-                targetChain,
-                bytes32(0) // targetToken
-            )
-        );
-
-        // You shall not pass!
-        vm.expectRevert("target token is zero address");
-        circleIntegration.registerTargetChainToken(encodedMessage);
-    }
-
-    function testRegisterTargetChainToken(uint16 targetChain, bytes32 targetToken) public {
-        vm.assume(targetChain > 0 && targetChain != circleIntegration.chainId());
-        vm.assume(targetToken != bytes32(0));
-
-        address sourceToken = address(usdc);
-
-        // First register source token
-        registerToken(sourceToken);
-
-        // Should not already exist.
-        assertEq(
-            circleIntegration.targetAcceptedToken(sourceToken, targetChain),
-            bytes32(0),
-            "target token already registered"
-        );
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_TARGET_CHAIN_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), sourceToken, targetChain, targetToken)
-        );
-
-        // Now register target token.
-        circleIntegration.registerTargetChainToken(encodedMessage);
-        assertEq(
-            circleIntegration.targetAcceptedToken(sourceToken, targetChain), targetToken, "target token not registered"
-        );
     }
 
     function testCannotUpgradeContractInvalidImplementation(bytes12 garbage, address newImplementation) public {
@@ -1104,54 +894,6 @@ contract CircleIntegrationTest is Test {
                 amount: amount,
                 targetChain: targetChain,
                 mintRecipient: bytes32(0)
-            }),
-            0, // batchId
-            abi.encodePacked("All your base are belong to us") // payload
-        );
-    }
-
-    function testCannotTransferTokensWithUnregisteredTargetToken() public {
-        // test variables
-        address token = address(usdc);
-        uint256 amount = 1e8;
-        uint16 targetChain = 6;
-        uint16 targetDomain = 1;
-        bytes32 targetEmitter = bytes32(uint256(uint160(makeAddr("targetAddress"))));
-        bytes32 mintRecipient = bytes32(uint256(uint160(makeAddr("mintRecipient"))));
-
-        // reigster the target emitter
-        registerContract(targetChain, targetEmitter, targetDomain);
-
-        // register the accepted token
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), token)
-        );
-        circleIntegration.registerAcceptedToken(encodedMessage);
-
-        // Set up USDC token for test
-        if (amount > 0) {
-            // First mint USDC.
-            mintUSDC(amount);
-
-            // Next set allowance.
-            usdc.approve(address(circleIntegration), amount);
-        }
-
-        // NOTE: do not register a target token
-
-        // You shall not pass!
-        vm.expectRevert("target token not registered");
-        circleIntegration.transferTokensWithPayload(
-            ICircleIntegration.TransferParameters({
-                token: token,
-                amount: amount,
-                targetChain: targetChain,
-                mintRecipient: mintRecipient
             }),
             0, // batchId
             abi.encodePacked("All your base are belong to us") // payload

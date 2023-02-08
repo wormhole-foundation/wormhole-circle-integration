@@ -160,45 +160,6 @@ describe("Circle Integration Registration", () => {
         );
         expect(accepted).is.true;
       });
-
-      it("Should Register Target Chain Token", async () => {
-        const timestamp = getTimeNow();
-        const chainId = await ethCircleIntegration.chainId();
-        const targetChain = await avaxCircleIntegration.chainId();
-        const targetToken = Buffer.from(
-          tryNativeToUint8Array(AVAX_USDC_TOKEN_ADDRESS, "avalanche")
-        );
-
-        // create unsigned registerTargetChainToken governance message
-        const published =
-          governance.publishCircleIntegrationRegisterTargetChainToken(
-            timestamp,
-            chainId,
-            ETH_USDC_TOKEN_ADDRESS,
-            targetChain,
-            targetToken
-          );
-
-        // sign governance message with guardian key
-        const signedMessage = guardians.addSignatures(published, [0]);
-
-        // register the target token
-        const receipt = await ethCircleIntegration
-          .registerTargetChainToken(signedMessage)
-          .then((tx) => tx.wait())
-          .catch((msg) => {
-            // should not happen
-            console.log(msg);
-            return null;
-          });
-        expect(receipt).is.not.null;
-
-        // check contract state to verify the registration
-        const registeredTargetToken = await ethCircleIntegration
-          .targetAcceptedToken(ETH_USDC_TOKEN_ADDRESS, targetChain)
-          .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
-        expect(Buffer.compare(registeredTargetToken, targetToken)).to.equal(0);
-      });
     });
 
     describe("Avalanche Fuji Testnet", () => {
@@ -271,45 +232,6 @@ describe("Circle Integration Registration", () => {
           AVAX_USDC_TOKEN_ADDRESS
         );
         expect(accepted).is.true;
-      });
-
-      it("Should Register Target Chain Token", async () => {
-        const timestamp = getTimeNow();
-        const chainId = await avaxCircleIntegration.chainId();
-        const targetChain = await ethCircleIntegration.chainId();
-        const targetToken = Buffer.from(
-          tryNativeToUint8Array(ETH_USDC_TOKEN_ADDRESS, "avalanche")
-        );
-
-        // create unsigned registerTargetChainToken governance message
-        const published =
-          governance.publishCircleIntegrationRegisterTargetChainToken(
-            timestamp,
-            chainId,
-            AVAX_USDC_TOKEN_ADDRESS,
-            targetChain,
-            targetToken
-          );
-
-        // sign governance message with guardian key
-        const signedMessage = guardians.addSignatures(published, [0]);
-
-        // register the target token
-        const receipt = await avaxCircleIntegration
-          .registerTargetChainToken(signedMessage)
-          .then((tx) => tx.wait())
-          .catch((msg) => {
-            // should not happen
-            console.log(msg);
-            return null;
-          });
-        expect(receipt).is.not.null;
-
-        /// check contract state to verify the registration
-        const registeredTargetToken = await avaxCircleIntegration
-          .targetAcceptedToken(AVAX_USDC_TOKEN_ADDRESS, targetChain)
-          .then((bytes) => Buffer.from(ethers.utils.arrayify(bytes)));
-        expect(Buffer.compare(registeredTargetToken, targetToken)).to.equal(0);
       });
     });
   });
