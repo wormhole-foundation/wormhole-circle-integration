@@ -29,10 +29,7 @@ import {
 import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {RedeemParameters, TransferParameters} from "../src";
 import {findCircleMessageInLogs} from "../src/logs";
-
-import {CircleGovernanceEmitter} from "./helpers/mock";
 import {
-  getTimeNow,
   MockCircleAttester,
   readCircleIntegrationProxyAddress,
   readMockIntegrationAddress,

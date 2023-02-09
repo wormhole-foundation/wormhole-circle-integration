@@ -1,46 +1,22 @@
-import { expect } from "chai";
-import { ethers } from "ethers";
+import {expect} from "chai";
+import {ethers} from "ethers";
+import {tryNativeToUint8Array} from "@certusone/wormhole-sdk";
 import {
-  CHAIN_ID_ALGORAND,
-  CHAIN_ID_AVAX,
-  CHAIN_ID_ETH,
-  tryNativeToUint8Array,
-} from "@certusone/wormhole-sdk";
-import {
-  AVAX_USDC_TOKEN_ADDRESS,
-  ETH_USDC_TOKEN_ADDRESS,
   GUARDIAN_PRIVATE_KEY,
   WORMHOLE_GUARDIAN_SET_INDEX,
   ETH_LOCALHOST,
   WALLET_PRIVATE_KEY,
-  WALLET_PRIVATE_KEY_TWO,
   AVAX_LOCALHOST,
   ETH_FORK_CHAIN_ID,
   AVAX_FORK_CHAIN_ID,
-  ETH_WORMHOLE_ADDRESS,
-  AVAX_WORMHOLE_ADDRESS,
 } from "./helpers/consts";
-import {
-  ICircleIntegration__factory,
-  IUSDC__factory,
-  IMockIntegration__factory,
-  IWormhole__factory,
-} from "../src/ethers-contracts";
-import { MockGuardians } from "@certusone/wormhole-sdk/lib/cjs/mock";
-import { RedeemParameters, TransferParameters } from "../src";
-import { findCircleMessageInLogs } from "../src/logs";
+import {ICircleIntegration__factory} from "../src/ethers-contracts";
+import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 
-import { CircleGovernanceEmitter } from "./helpers/mock";
-import {
-  getTimeNow,
-  MockCircleAttester,
-  readCircleIntegrationProxyAddress,
-  readMockIntegrationAddress,
-  findWormholeMessageInLogs,
-  findRedeemEventInLogs,
-} from "./helpers/utils";
+import {CircleGovernanceEmitter} from "./helpers/mock";
+import {getTimeNow, readCircleIntegrationProxyAddress} from "./helpers/utils";
 
-const { execSync } = require("child_process");
+const {execSync} = require("child_process");
 
 describe("Circle Integration Implementation Upgrade", () => {
   // ethereum wallet, CircleIntegration contract and USDC contract

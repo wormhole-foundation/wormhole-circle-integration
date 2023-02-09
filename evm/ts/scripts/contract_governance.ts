@@ -1,11 +1,5 @@
 import {ethers} from "ethers";
-import {
-  CHAIN_ID_ALGORAND,
-  CHAIN_ID_AVAX,
-  CHAIN_ID_ETH,
-  tryNativeToUint8Array,
-  ChainId,
-} from "@certusone/wormhole-sdk";
+import {tryNativeToUint8Array} from "@certusone/wormhole-sdk";
 import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {CircleGovernanceEmitter} from "../test/helpers/mock";
 import {abi as WORMHOLE_ABI} from "../../out/IWormhole.sol/IWormhole.json";

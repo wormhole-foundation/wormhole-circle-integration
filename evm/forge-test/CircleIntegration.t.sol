@@ -25,8 +25,7 @@ contract CircleIntegrationTest is Test {
 
     uint8 constant GOVERNANCE_UPDATE_WORMHOLE_FINALITY = 1;
     uint8 constant GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN = 2;
-    uint8 constant GOVERNANCE_REGISTER_ACCEPTED_TOKEN = 3;
-    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 4;
+    uint8 constant GOVERNANCE_UPGRADE_CONTRACT = 3;
 
     // USDC
     IUSDC usdc;
@@ -110,20 +109,6 @@ contract CircleIntegrationTest is Test {
         foreignUsdc = bytes32(uint256(uint160(vm.envAddress("TESTING_FOREIGN_USDC_TOKEN_ADDRESS"))));
     }
 
-    function registerToken(address token) public {
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), token)
-        );
-
-        // Register and should now be accepted.
-        circleIntegration.registerAcceptedToken(encodedMessage);
-    }
-
     function registerContract(uint16 foreignChain, bytes32 foreignEmitter, uint32 domain) public {
         bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
             wormholeSimulator.governanceChainId(),
@@ -139,9 +124,6 @@ contract CircleIntegrationTest is Test {
     }
 
     function prepareCircleIntegrationTest(uint256 amount) public {
-        // Register USDC with CircleIntegration
-        registerToken(address(usdc));
-
         // Set up USDC token for test
         if (amount > 0) {
             // First mint USDC.
@@ -651,107 +633,6 @@ contract CircleIntegrationTest is Test {
             vm.expectRevert("chain already registered");
             circleIntegration.registerEmitterAndDomain(anotherMessage);
         }
-    }
-
-    function testCannotRegisterAcceptedTokenInvalidLength(address tokenAddress) public {
-        vm.assume(tokenAddress != address(0));
-
-        // Should not already be accepted.
-        assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), tokenAddress, "But wait! There's more.")
-        );
-
-        // Register and should now be accepted.
-        vm.expectRevert("invalid governance payload length");
-        circleIntegration.registerAcceptedToken(encodedMessage);
-    }
-
-    function testCannotRegisterAcceptedTokenZeroAddress() public {
-        // Should not already be accepted.
-        address tokenAddress = address(0);
-        assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), tokenAddress)
-        );
-
-        // You shall not pass!
-        vm.expectRevert("token is zero address");
-        circleIntegration.registerAcceptedToken(encodedMessage);
-    }
-
-    function testCannotRegisterAcceptedTokenInvalidToken(bytes12 garbage, address tokenAddress) public {
-        vm.assume(garbage != bytes12(0));
-        vm.assume(tokenAddress != address(0));
-
-        // Should not already be accepted.
-        assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(garbage, tokenAddress)
-        );
-
-        // You shall not pass!
-        vm.expectRevert("invalid address");
-        circleIntegration.registerAcceptedToken(encodedMessage);
-    }
-
-    function testCannotRegisterAcceptedTokenTokenNotAcceptedByCircle(address tokenAddress) public {
-        vm.assume(tokenAddress != address(0) && tokenAddress != address(usdc));
-
-        // Should not already be accepted.
-        assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), tokenAddress)
-        );
-
-        // You shall not pass!
-        vm.expectRevert("token not accepted by CCTP");
-        circleIntegration.registerAcceptedToken(encodedMessage);
-    }
-
-    function testRegisterAcceptedToken() public {
-        address tokenAddress = address(usdc);
-
-        // Should not already be accepted.
-        assertTrue(!circleIntegration.isAcceptedToken(tokenAddress), "token already registered");
-
-        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
-            wormholeSimulator.governanceChainId(),
-            wormholeSimulator.governanceContract(),
-            GOVERNANCE_MODULE,
-            GOVERNANCE_REGISTER_ACCEPTED_TOKEN,
-            circleIntegration.chainId(),
-            abi.encodePacked(bytes12(0), tokenAddress)
-        );
-
-        // Register and should now be accepted.
-        circleIntegration.registerAcceptedToken(encodedMessage);
-
-        assertTrue(circleIntegration.isAcceptedToken(tokenAddress), "token not registered");
     }
 
     function testCannotUpgradeContractInvalidImplementation(bytes12 garbage, address newImplementation) public {

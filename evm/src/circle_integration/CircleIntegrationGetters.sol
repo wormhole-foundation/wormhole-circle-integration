@@ -77,11 +77,11 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
 
     /**
      * @notice Circle Bridge registered token boolean
-     * @param token Address of token being checked against `acceptedTokens` state variable
+     * @param token Address of token being checked against the Circle TokenMinter
      * @return AcceptedToken bool
      */
     function isAcceptedToken(address token) public view returns (bool) {
-        return _state.acceptedTokens[token];
+        return circleTokenMinter().burnLimitsPerMessage(token) > 0;
     }
 
     /**

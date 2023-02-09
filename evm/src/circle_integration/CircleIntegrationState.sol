@@ -39,9 +39,6 @@ contract CircleIntegrationStorage {
         /// @dev Wormhole chain ID to known emitter address mapping
         mapping(uint16 => bytes32) registeredEmitters;
 
-        /// @dev Circle Bridge accepted token to boolean mapping
-        mapping(address => bool) acceptedTokens;
-
         /// @dev Wormhole chain ID to Circle chain domain mapping
         mapping(uint16 => uint32) chainIdToDomain;
 

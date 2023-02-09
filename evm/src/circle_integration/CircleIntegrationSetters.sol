@@ -36,10 +36,6 @@ contract CircleIntegrationSetters is CircleIntegrationState {
         _state.registeredEmitters[chainId_] = emitter;
     }
 
-    function addAcceptedToken(address token) internal {
-        _state.acceptedTokens[token] = true;
-    }
-
     function setChainIdToDomain(uint16 chainId_, uint32 domain) internal {
         _state.chainIdToDomain[chainId_] = domain;
     }
