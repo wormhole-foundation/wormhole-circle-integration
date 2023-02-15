@@ -62,14 +62,14 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
 
         // Call the circle bridge and `depositForBurnWithCaller`. The `mintRecipient`
         // should be the target contract (or wallet) composing on this contract.
-        (bytes32 targetToken, uint64 nonce, uint256 amountReceived) = _transferTokens(
+        (uint64 nonce, uint256 amountReceived) = _transferTokens(
             transferParams.token, transferParams.amount, transferParams.targetChain, transferParams.mintRecipient
         );
 
         // encode DepositWithPayload message
         bytes memory encodedMessage = encodeDepositWithPayload(
             DepositWithPayload({
-                token: targetToken,
+                token: addressToBytes32(transferParams.token),
                 amount: amountReceived,
                 sourceDomain: localDomain(),
                 targetDomain: getDomainFromChainId(transferParams.targetChain),
@@ -86,17 +86,13 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
 
     function _transferTokens(address token, uint256 amount, uint16 targetChain, bytes32 mintRecipient)
         internal
-        returns (bytes32 targetToken, uint64 nonce, uint256 amountReceived)
+        returns (uint64 nonce, uint256 amountReceived)
     {
         // sanity check user input
         require(amount > 0, "amount must be > 0");
         require(mintRecipient != bytes32(0), "invalid mint recipient");
         require(isAcceptedToken(token), "token not accepted");
         require(getRegisteredEmitter(targetChain) != bytes32(0), "target contract not registered");
-
-        // confirm that the target token was registered
-        targetToken = targetAcceptedToken(token, targetChain);
-        require(targetToken != bytes32(0), "target token not registered");
 
         // take custody of tokens
         amountReceived = custodyTokens(token, amount);
@@ -166,8 +162,13 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
         // verify the wormhole message
         IWormhole.VM memory verifiedMessage = verifyWormholeRedeemMessage(params.encodedWormholeMessage);
 
-        // decode the message payload into the DepositWithPayload struct
+        // Decode the message payload into the DepositWithPayload struct. Call the Circle TokenMinter
+        // contract to determine the address of the encoded token on this chain.
         depositInfo = decodeDepositWithPayload(verifiedMessage.payload);
+        depositInfo.token = fetchLocalTokenAddress(depositInfo.sourceDomain, depositInfo.token);
+
+        // confirm that circle gave us a valid token address
+        require(depositInfo.token != bytes32(0), "invalid local token address");
 
         // confirm that the caller is the `mintRecipient` to ensure atomic execution
         require(addressToBytes32(msg.sender) == depositInfo.mintRecipient, "caller must be mintRecipient");
@@ -225,6 +226,25 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
 
         // confirm that both the Wormhole message and Circle message share the same transfer info
         return (sourceDomain == circleSourceDomain && targetDomain == circleTargetDomain && nonce == circleNonce);
+    }
+
+    /**
+     * @notice Fetches the local token address given an address and domain from
+     * a different chain.
+     * @param sourceDomain Circle domain for the sending chain.
+     * @param sourceToken Address of the token for the sending chain.
+     * @return Address bytes32 formatted address of the `sourceToken` on this chain.
+     */
+    function fetchLocalTokenAddress(uint32 sourceDomain, bytes32 sourceToken)
+        public
+        view
+        returns (bytes32)
+    {
+        return addressToBytes32(
+            circleTokenMinter().remoteTokensToLocalTokens(
+                keccak256(abi.encodePacked(sourceDomain, sourceToken))
+            )
+        );
     }
 
     /**

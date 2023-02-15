@@ -30,20 +30,14 @@ contract CircleIntegrationStorage {
         /// @dev address of the Circle Message Transmitter on this chain
         address circleTransmitterAddress;
 
+        /// @dev address of the Circle Token Minter on this chain
+        address circleTokenMinterAddress;
+
         /// @dev mapping of initialized implementation (logic) contracts
         mapping(address => bool) initializedImplementations;
 
         /// @dev Wormhole chain ID to known emitter address mapping
         mapping(uint16 => bytes32) registeredEmitters;
-
-        /// @dev Circle Bridge accepted token to boolean mapping
-        mapping(address => bool) acceptedTokens;
-
-        /**
-         * @dev Circle Bridge accepted token to target chain accepted token
-         * (bytes32 zero-left-padded) mapping.
-         */
-        mapping(address => mapping(uint16 => bytes32)) targetAcceptedTokens;
 
         /// @dev Wormhole chain ID to Circle chain domain mapping
         mapping(uint16 => uint32) chainIdToDomain;

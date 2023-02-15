@@ -1,11 +1,5 @@
 import {ethers} from "ethers";
-import {
-  CHAIN_ID_ALGORAND,
-  CHAIN_ID_AVAX,
-  CHAIN_ID_ETH,
-  tryNativeToUint8Array,
-  ChainId,
-} from "@certusone/wormhole-sdk";
+import {tryNativeToUint8Array} from "@certusone/wormhole-sdk";
 import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {CircleGovernanceEmitter} from "../test/helpers/mock";
 import {abi as WORMHOLE_ABI} from "../../out/IWormhole.sol/IWormhole.json";
@@ -88,44 +82,6 @@ async function registerEmitterAndDomain() {
       Buffer.from(ethers.utils.arrayify(bytes))
     );
   expect(Buffer.compare(registeredEmitter, emitterAddress)).to.equal(0);
-}
-
-async function registerAcceptedToken() {
-  // MockGuardians and MockCircleAttester objects
-  const guardians = new MockGuardians(
-    await wormhole.getCurrentGuardianSetIndex(),
-    [process.env.TESTNET_GUARDIAN_KEY!]
-  );
-
-  const timestamp = getTimeNow();
-  const chainId = Number(process.env.SOURCE_CHAIN_ID!);
-
-  // create unsigned registerAcceptedToken governance message
-  const published = governance.publishCircleIntegrationRegisterAcceptedToken(
-    timestamp,
-    chainId,
-    process.env.SOURCE_USDC_ADDRESS!
-  );
-
-  // sign governance message with guardian key
-  const signedMessage = guardians.addSignatures(published, [0]);
-
-  // register the token
-  const receipt = await circleIntegration
-    .registerAcceptedToken(signedMessage)
-    .then((tx: ethers.ContractTransaction) => tx.wait())
-    .catch((msg: string) => {
-      // should not happen
-      console.log(msg);
-      return null;
-    });
-  expect(receipt).is.not.null;
-
-  // check contract state to verify the registration
-  const accepted = await circleIntegration.isAcceptedToken(
-    process.env.SOURCE_USDC_ADDRESS!
-  );
-  expect(accepted).is.true;
 }
 
 async function updateFinality() {

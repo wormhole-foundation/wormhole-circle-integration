@@ -29,10 +29,7 @@ import {
 import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {RedeemParameters, TransferParameters} from "../src";
 import {findCircleMessageInLogs} from "../src/logs";
-
-import {CircleGovernanceEmitter} from "./helpers/mock";
 import {
-  getTimeNow,
   MockCircleAttester,
   readCircleIntegrationProxyAddress,
   readMockIntegrationAddress,
@@ -483,74 +480,6 @@ describe("Circle Integration Send and Receive", () => {
         expect(
           e.error.reason,
           "execution reverted: target contract not registered"
-        ).to.be.equal;
-        failed = true;
-      }
-
-      // confirm that the call failed
-      expect(failed).is.true;
-    });
-
-    it("Should Not Allow Transfers for Unregistered Target Tokens", async () => {
-      // initialize governance module
-      const governance = new CircleGovernanceEmitter();
-
-      // store EUROC address
-      const eurocAddress = "0x53d80871b92dadeD34A4BdFA6838DdFC7f214240";
-      const timestamp = getTimeNow();
-      const chainId = await avaxCircleIntegration.chainId();
-
-      // publish an unsigned registerAcceptedToken governance message
-      const published =
-        governance.publishCircleIntegrationRegisterAcceptedToken(
-          timestamp,
-          chainId,
-          eurocAddress
-        );
-
-      // sign the governance message with the guardian key
-      const signedMessage = guardians.addSignatures(published, [0]);
-
-      // register the token
-      const receipt = await avaxCircleIntegration
-        .registerAcceptedToken(signedMessage)
-        .then((tx) => tx.wait())
-        .catch((msg) => {
-          // should not happen
-          console.log(msg);
-          return null;
-        });
-      expect(receipt).is.not.null;
-
-      // check state to confirm the token was registered
-      const accepted = await avaxCircleIntegration.isAcceptedToken(
-        eurocAddress
-      );
-      expect(accepted).is.true;
-
-      // define transferTokensWithPayload function arguments
-      const params: TransferParameters = {
-        token: eurocAddress,
-        amount: amountFromAvax,
-        targetChain: CHAIN_ID_ALGORAND as number, // unregistered chain
-        mintRecipient: tryNativeToUint8Array(ethWallet.address, "ethereum"),
-      };
-      const batchId = 0; // opt out of batching
-      const payload = Buffer.from("Sending an unregistered target token :)");
-
-      // try to transfer with an unregistered target token
-      let failed: boolean = false;
-      try {
-        const receipt = await avaxCircleIntegration
-          .transferTokensWithPayload(params, batchId, payload)
-          .then(async (tx) => {
-            const receipt = await tx.wait();
-            return receipt;
-          });
-      } catch (e: any) {
-        expect(
-          e.error.reason,
-          "execution reverted: target token not registered"
         ).to.be.equal;
         failed = true;
       }

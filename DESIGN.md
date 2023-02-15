@@ -70,10 +70,6 @@ function updateWormholeFinality(bytes attestedGovernanceMessage)
 
 function registerEmitterAndDomain(bytes attestedGovernanceMessage)
 
-function registerAcceptedToken(bytes attestedGovernanceMessage)
-
-function registerTargetChainToken(bytes attestedGovernanceMessage)
-
 function upgradeContract(bytes attestedGovernanceMessage)
 
 function verifyGovernanceMessage(bytes attestedGovernanceMessage, uint8 action)

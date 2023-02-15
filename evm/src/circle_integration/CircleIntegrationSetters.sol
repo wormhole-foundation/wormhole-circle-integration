@@ -28,16 +28,12 @@ contract CircleIntegrationSetters is CircleIntegrationState {
         _state.circleTransmitterAddress = circleTransmitterAddress_;
     }
 
+    function setCircleTokenMinter(address circleTokenMinterAddress_) internal {
+        _state.circleTokenMinterAddress = circleTokenMinterAddress_;
+    }
+
     function setEmitter(uint16 chainId_, bytes32 emitter) internal {
         _state.registeredEmitters[chainId_] = emitter;
-    }
-
-    function addAcceptedToken(address token) internal {
-        _state.acceptedTokens[token] = true;
-    }
-
-    function addTargetAcceptedToken(address sourceToken, uint16 chainId, bytes32 targetToken) internal {
-        _state.targetAcceptedTokens[sourceToken][chainId] = targetToken;
     }
 
     function setChainIdToDomain(uint16 chainId_, uint32 domain) internal {

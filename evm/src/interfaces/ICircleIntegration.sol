@@ -40,6 +40,11 @@ interface ICircleIntegration {
         external
         returns (DepositWithPayload memory depositWithPayload);
 
+    function fetchLocalTokenAddress(uint32 sourceDomain, bytes32 sourceToken)
+        external
+        view
+        returns (bytes32);
+
     function encodeDepositWithPayload(DepositWithPayload memory message) external pure returns (bytes memory);
 
     function decodeDepositWithPayload(bytes memory encoded) external pure returns (DepositWithPayload memory message);
@@ -68,8 +73,6 @@ interface ICircleIntegration {
 
     function localDomain() external view returns (uint32);
 
-    function targetAcceptedToken(address sourceToken, uint16 chainId_) external view returns (bytes32);
-
     function verifyGovernanceMessage(bytes memory encodedMessage, uint8 action)
         external
         view
@@ -81,10 +84,6 @@ interface ICircleIntegration {
     function updateWormholeFinality(bytes memory encodedMessage) external;
 
     function registerEmitterAndDomain(bytes memory encodedMessage) external;
-
-    function registerAcceptedToken(bytes memory encodedMessage) external;
-
-    function registerTargetChainToken(bytes memory encodedMessage) external;
 
     function upgradeContract(bytes memory encodedMessage) external;
 }

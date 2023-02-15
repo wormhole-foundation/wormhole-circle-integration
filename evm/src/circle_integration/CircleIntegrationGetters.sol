@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 import {ICircleBridge} from "../interfaces/circle/ICircleBridge.sol";
 import {IMessageTransmitter} from "../interfaces/circle/IMessageTransmitter.sol";
+import {ITokenMinter} from "../interfaces/circle/ITokenMinter.sol";
 
 import {CircleIntegrationSetters} from "./CircleIntegrationSetters.sol";
 
@@ -58,6 +59,14 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
     }
 
     /**
+     * @notice Circle Token Minter contract interface
+     * @return ITokenMinter interface
+     */
+    function circleTokenMinter() public view returns (ITokenMinter) {
+        return ITokenMinter(_state.circleTokenMinterAddress);
+    }
+
+    /**
      * @notice Registered Circle Integration contracts on other blockchains
      * @param emitterChainId Wormhole chain ID for message sender
      * @return RegisteredEmitter bytes32
@@ -68,21 +77,11 @@ contract CircleIntegrationGetters is CircleIntegrationSetters {
 
     /**
      * @notice Circle Bridge registered token boolean
-     * @param token Address of token being checked against `acceptedTokens` state variable
+     * @param token Address of token being checked against the Circle TokenMinter
      * @return AcceptedToken bool
      */
     function isAcceptedToken(address token) public view returns (bool) {
-        return _state.acceptedTokens[token];
-    }
-
-    /**
-     * @notice Circle Bridge registered token on target blockchains boolean
-     * @param sourceToken Address of token on this chain
-     * @param chainId_ Wormhole chain ID of target chain
-     * @return TargetAcceptedToken bytes32
-     */
-    function targetAcceptedToken(address sourceToken, uint16 chainId_) public view returns (bytes32) {
-        return _state.targetAcceptedTokens[sourceToken][chainId_];
+        return circleTokenMinter().burnLimitsPerMessage(token) > 0;
     }
 
     /**
