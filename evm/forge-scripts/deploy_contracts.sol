@@ -13,12 +13,11 @@ import {IMessageTransmitter} from "../src/interfaces/circle/IMessageTransmitter.
 import {CircleIntegrationSetup} from "../src/circle_integration/CircleIntegrationSetup.sol";
 import {CircleIntegrationImplementation} from "../src/circle_integration/CircleIntegrationImplementation.sol";
 import {CircleIntegrationProxy} from "../src/circle_integration/CircleIntegrationProxy.sol";
-
-import {WormholeSimulator} from "wormhole-forge-sdk/WormholeSimulator.sol";
+import {ICircleIntegration} from "../src/interfaces/ICircleIntegration.sol";
 
 contract ContractScript is Script {
     // Wormhole
-    WormholeSimulator wormholeSimulator;
+    IWormhole wormhole;
 
     // Circle
     ICircleBridge circleBridge;
@@ -30,8 +29,7 @@ contract ContractScript is Script {
 
     function setUp() public {
         // Wormhole
-        wormholeSimulator = wormholeSimulator = new WormholeSimulator(
-            vm.envAddress("RELEASE_WORMHOLE_ADDRESS"), 0);
+        wormhole = IWormhole(vm.envAddress("RELEASE_WORMHOLE_ADDRESS"));
 
         // Circle
         circleBridge = ICircleBridge(vm.envAddress("RELEASE_CIRCLE_BRIDGE_ADDRESS"));
@@ -44,17 +42,19 @@ contract ContractScript is Script {
         // next Implementation
         implementation = new CircleIntegrationImplementation();
 
+        console.log("Wormhole address: %s, chainId: %s", address(wormhole), wormhole.chainId());
+
         // setup Proxy using Implementation
         proxy = new CircleIntegrationProxy(
             address(setup),
             abi.encodeWithSelector(
                 bytes4(keccak256("setup(address,address,uint8,address,uint16,bytes32)")),
                 address(implementation),
-                address(wormholeSimulator.wormhole()),
-                uint8(1), // finality
+                address(wormhole),
+                uint8(vm.envUint("RELEASE_WORMHOLE_FINALITY")),
                 address(circleBridge),
-                wormholeSimulator.governanceChainId(),
-                wormholeSimulator.governanceContract()
+                wormhole.governanceChainId(),
+                wormhole.governanceContract()
             )
         );
     }
