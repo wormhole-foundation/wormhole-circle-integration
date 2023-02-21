@@ -21,7 +21,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
     using BytesLib for bytes;
 
     /**
-     * @notice Emitted when Circle-support assets have been minted to the mintRecipient
+     * @notice Emitted when Circle-supported assets have been minted to the mintRecipient
      * @param emitterChainId Wormhole chain ID of emitter contract on source chain
      * @param emitterAddress Address (bytes32 zero-left-padded) of emitter on source chain
      * @param sequence Sequence of Wormhole message used to mint tokens

@@ -27,7 +27,7 @@ export RELEASE_WORMHOLE_ADDRESS=0x
 export RELEASE_CIRCLE_BRIDGE_ADDRESS=0x
 
 # Circle Message Transmitter Address
-export RELEASE_MESSAGE_TRANSMITTER_ADDRESS=0x
+export RELEASE_WORMHOLE_FINALITY=
 ```
 
 Then run the following command to deploy (and set up) the proxy contract:
