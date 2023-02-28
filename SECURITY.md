@@ -17,9 +17,9 @@ As these 3rd party audits are completed and issues are sufficiently addressed, w
 
 ## Bug Bounty Program
 
-We are in the process of designing a **bug bounty program** for Wormhole Circle Integration.
+Wormhole Circle Integration contracts are in scope for the [Wormhole Bug Bounty program](https://github.com/wormhole-foundation/wormhole/blob/main/SECURITY.md#bug-bounty-program).
 
-In the mean-time, if you find a security issue, we ask that you reach out to our team via this [form](https://wormhole.com/bounty/).
+If you find a security issue, please report the issue immediately using one of the two bug bounty programs above.
 
 ## Trust Assumptions
 
