@@ -10,5 +10,6 @@ jobs:
   ethereum:
     runs-on: ubuntu-20.04
     steps:
-      - run: ls
-      - run: cd evm && make dependencies
+      - name: Build contracts
+      - working-directory: ./evm
+      - run: make dependencies
