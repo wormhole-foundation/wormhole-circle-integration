@@ -32,6 +32,7 @@ EVM_ROOT=$(dirname $0)/../
 echo "deploy contracts"
 RELEASE_WORMHOLE_ADDRESS=$ETH_WORMHOLE_ADDRESS \
 RELEASE_CIRCLE_BRIDGE_ADDRESS=$ETH_CIRCLE_BRIDGE_ADDRESS \
+RELEASE_WORMHOLE_FINALITY=$ETH_WORMHOLE_FINALITY \
 forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
     --rpc-url http://localhost:8546 \
     --private-key $PRIVATE_KEY \
@@ -39,6 +40,7 @@ forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
 
 RELEASE_WORMHOLE_ADDRESS=$AVAX_WORMHOLE_ADDRESS \
 RELEASE_CIRCLE_BRIDGE_ADDRESS=$AVAX_CIRCLE_BRIDGE_ADDRESS \
+RELEASE_WORMHOLE_FINALITY=$AVAX_WORMHOLE_FINALITY \
 forge script $EVM_ROOT/forge-scripts/deploy_contracts.sol \
     --rpc-url http://localhost:8547 \
     --private-key $PRIVATE_KEY \
