@@ -15,3 +15,4 @@ jobs:
       - run: cd evm && bash ../scripts/install_foundry.sh
       - run: cd evm && PATH=$PATH:$HOME/.foundry/bin/ make dependencies
       - run: cd evm && PATH=$PATH:$HOME/.foundry/bin/ && source env/testing.env && ETH_FORK_RPC=${{ secrets.ETH_RPC }} forge test --fork-url ${{ secrets.ETH_RPC }}
+      - run: cd evm && source env/testing.env && ETH_FORK_RPC=${{ secrets.ETH_RPC }} bash shell-scripts/run_integration_tests.sh
