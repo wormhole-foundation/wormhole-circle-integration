@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 interface IMessageTransmitter {
     event MessageSent(bytes message);
