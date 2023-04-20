@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 import {IMessageTransmitter} from "./IMessageTransmitter.sol";
 import {ITokenMinter} from "./ITokenMinter.sol";
