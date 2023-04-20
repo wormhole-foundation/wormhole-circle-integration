@@ -155,7 +155,7 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
      * - `mintRecipient` Recipient of minted tokens (must be caller of this contract)
      * - `payload` Arbitrary Wormhole message payload
      */
-    function redeemTokensWithPayload(RedeemParameters memory params)
+    function redeemTokensWithPayload(RedeemParameters calldata params)
         public
         returns (DepositWithPayload memory depositInfo)
     {
@@ -211,7 +211,10 @@ contract CircleIntegration is CircleIntegrationMessages, CircleIntegrationGovern
 
     function verifyEmitter(IWormhole.VM memory vm) internal view returns (bool) {
         // verify that the sender of the wormhole message is a trusted
-        return (getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress);
+        return (
+            getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress &&
+            vm.emitterAddress != bytes32(0)
+        );
     }
 
     function verifyCircleMessage(bytes memory circleMessage, uint32 sourceDomain, uint32 targetDomain, uint64 nonce)
