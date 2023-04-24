@@ -80,6 +80,8 @@ interface ICircleIntegration {
 
     function evmChain() external view returns (uint256);
 
+    function addressToBytes32(address address_) external pure returns (bytes32);
+
     // guardian governance only
     function updateWormholeFinality(bytes memory encodedMessage) external;
 
