@@ -3,7 +3,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
-import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 import {IWormhole} from "wormhole/interfaces/IWormhole.sol";
 
@@ -38,25 +38,28 @@ contract ContractScript is Script {
     function deployCircleIntegration() public {
         // first Setup
         setup = new CircleIntegrationSetup();
+        console2.log("CircleIntegrationSetup address: %s", address(setup));
 
         // next Implementation
         implementation = new CircleIntegrationImplementation();
+        console2.log("CircleIntegrationImplementation address: %s", address(implementation));
 
-        console.log("Wormhole address: %s, chainId: %s", address(wormhole), wormhole.chainId());
+
+        console2.log("Wormhole address: %s, chainId: %s", address(wormhole), wormhole.chainId());
 
         // setup Proxy using Implementation
         proxy = new CircleIntegrationProxy(
             address(setup),
-            abi.encodeWithSelector(
-                bytes4(keccak256("setup(address,address,uint8,address,uint16,bytes32)")),
+            abi.encodeCall(CircleIntegrationSetup.setup, (
                 address(implementation),
                 address(wormhole),
                 uint8(vm.envUint("RELEASE_WORMHOLE_FINALITY")),
                 address(circleBridge),
                 wormhole.governanceChainId(),
                 wormhole.governanceContract()
-            )
+            ))
         );
+        console2.log("CircleIntegrationProxy address: %s", address(proxy));
     }
 
     function run() public {
