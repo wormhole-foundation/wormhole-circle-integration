@@ -23,7 +23,7 @@ To deploy Wormhole's Circle Integration contracts, see the [Wormhole Book](https
 # Wormhole Core Contract Address
 export RELEASE_WORMHOLE_ADDRESS=0x
 
-# Circle Bridge Contract Address
+# Circle Bridge Contract Address (TokenMessenger)
 export RELEASE_CIRCLE_BRIDGE_ADDRESS=0x
 
 # Circle Message Transmitter Address

@@ -21,7 +21,7 @@ contract ContractScript is Script {
 
     function setUp() public {
         // Circle integration
-        integration = ICircleIntegration(vm.envAddress("DEPLOYED_ADDRESS"));
+        integration = ICircleIntegration(vm.envAddress("CIRCLE_INTEGRATION_PROXY"));
 
         // wormhole
         wormhole = IWormhole(vm.envAddress("RELEASE_WORMHOLE_ADDRESS"));

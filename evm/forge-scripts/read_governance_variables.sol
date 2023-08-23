@@ -13,7 +13,7 @@ contract ContractScript is Script {
 
     function setUp() public {
         // Circle integration
-        integration = ICircleIntegration(vm.envAddress("DEPLOYED_ADDRESS"));
+        integration = ICircleIntegration(vm.envAddress("CIRCLE_INTEGRATION_PROXY"));
     }
 
     function readStateVariables() public {
