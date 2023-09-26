@@ -83,8 +83,10 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         bytes memory payload = verifyAndConsumeGovernanceMessage(encodedMessage, GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN);
         require(payload.length == GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN_LENGTH, "invalid governance payload length");
 
-        // registering emitters should only be relevant for this contract's chain ID
-        require(payload.toUint16(33) == chainId(), "invalid target chain");
+        // Registering emitters should only be relevant for this contract's chain ID,
+        // unless the target chain is 0 (which means all chains).
+        uint16 targetChainId = payload.toUint16(33);
+        require(targetChainId == 0 || targetChainId == chainId(), "invalid target chain");
 
         // emitterChainId at byte 35
         uint16 emitterChainId = payload.toUint16(35);

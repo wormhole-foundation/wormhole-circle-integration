@@ -453,7 +453,10 @@ contract CircleIntegrationTest is Test {
         bytes32 foreignEmitter,
         uint32 domain
     ) public {
-        vm.assume(targetChain != circleIntegration.chainId());
+        vm.assume(
+            targetChain != circleIntegration.chainId() &&
+            targetChain != 0
+        );
         vm.assume(foreignChain > 0);
         vm.assume(foreignChain != circleIntegration.chainId());
         vm.assume(foreignEmitter != bytes32(0));
@@ -587,6 +590,33 @@ contract CircleIntegrationTest is Test {
             vm.expectRevert("domain == localDomain()");
             circleIntegration.registerEmitterAndDomain(encodedMessage);
         }
+    }
+
+    function testRegisterEmitterAndDomainNoTarget() public {
+        uint16 foreignChain = 42069;
+        bytes32 foreignEmitter = bytes32(uint256(uint160(vm.envAddress("TESTING_FOREIGN_USDC_TOKEN_ADDRESS"))));
+        uint32 domain = 69420;
+
+        // No emitters should be registered for this chain.
+        assertEq(circleIntegration.getRegisteredEmitter(foreignChain), bytes32(0), "already registered");
+        assertEq(circleIntegration.getDomainFromChainId(foreignChain), 0, "domain already registered");
+        assertEq(circleIntegration.getChainIdFromDomain(domain), 0, "chain already registered");
+
+        bytes memory encodedMessage = wormholeSimulator.makeSignedGovernanceObservation(
+            wormholeSimulator.governanceChainId(),
+            wormholeSimulator.governanceContract(),
+            GOVERNANCE_MODULE,
+            GOVERNANCE_REGISTER_EMITTER_AND_DOMAIN,
+            0, // NOTE: set the target chain to zero
+            abi.encodePacked(foreignChain, foreignEmitter, domain)
+        );
+
+        // Register emitter and domain.
+        circleIntegration.registerEmitterAndDomain(encodedMessage);
+
+        require(circleIntegration.getRegisteredEmitter(foreignChain) == foreignEmitter, "wrong foreignEmitter");
+        require(circleIntegration.getDomainFromChainId(foreignChain) == domain, "wrong domain");
+        require(circleIntegration.getChainIdFromDomain(domain) == foreignChain, "wrong chain");
     }
 
     function testRegisterEmitterAndDomain(uint16 foreignChain, bytes32 foreignEmitter, uint32 domain) public {
