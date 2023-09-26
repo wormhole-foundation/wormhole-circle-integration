@@ -86,7 +86,7 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
         // Registering emitters should only be relevant for this contract's chain ID,
         // unless the target chain is 0 (which means all chains).
         uint16 targetChainId = payload.toUint16(33);
-        require(targetChainId == chainId() || targetChainId == 0, "invalid target chain");
+        require(targetChainId == 0 || targetChainId == chainId(), "invalid target chain");
 
         // emitterChainId at byte 35
         uint16 emitterChainId = payload.toUint16(35);
