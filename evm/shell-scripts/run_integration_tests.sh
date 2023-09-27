@@ -1,4 +1,4 @@
-#/bin/bash
+#!/usr/bin/env bash
 
 pgrep anvil > /dev/null
 if [ $? -eq 0 ]; then
