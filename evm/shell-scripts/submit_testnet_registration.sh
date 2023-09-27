@@ -10,6 +10,6 @@ export SIGNER_KEY=$5
 
 forge script $(dirname $0)/../forge-scripts/generate_registration_vaa.sol \
     -vv \
-    --rpc-url $RPC \
+    --rpc-url $CONFIGURE_CCTP_RPC \
     --private-key $PRIVATE_KEY \
     --broadcast --slow
