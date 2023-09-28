@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import yargs from "yargs";
+import type { Argv } from "yargs";
 import { hideBin } from "yargs/helpers";
 
 export type SignerArguments =
@@ -15,7 +16,7 @@ export type SignerArguments =
 /**
  * @dev Use this to enrich your argument parsing with signer options
  */
-export function addSignerArgsParser<T>(parser: yargs.Argv<T>) {
+export function addSignerArgsParser<T>(parser: Argv<T>) {
   return parser
     .option("ledger", {
       boolean: true,

@@ -3,8 +3,8 @@ import yargs from "yargs";
 import {
   ICircleIntegration,
   ICircleIntegration__factory,
-} from "../src/ethers-contracts";
-import { addSignerArgsParser, validateSignerArgs, getSigner } from "./signer";
+} from "../src/ethers-contracts/index.js";
+import { addSignerArgsParser, validateSignerArgs, getSigner } from "./signer.js";
 
 interface Setup {
   circleIntegration: ICircleIntegration;

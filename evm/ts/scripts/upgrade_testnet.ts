@@ -1,11 +1,12 @@
 import { ethers } from "ethers";
 import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 import {
   ICircleIntegration,
   ICircleIntegration__factory,
-} from "../src/ethers-contracts";
-import { addSignerArgsParser, validateSignerArgs, getSigner } from "./signer";
-import { createCircleIntegrationUpgradeVAA, GuardianSet } from "./sign_vaa";
+} from "../src/ethers-contracts/index.js";
+import { addSignerArgsParser, validateSignerArgs, getSigner } from "./signer.js";
+import { createCircleIntegrationUpgradeVAA, GuardianSet } from "./sign_vaa.js";
 
 interface Setup {
   circleIntegration: ICircleIntegration;
@@ -41,7 +42,7 @@ Skipping indexes in the guardian set is not supported.`,
       description: "EVM RPC URL",
     });
 
-  const parsedArgs = await parser.argv;
+  const parsedArgs = await parser.parse(hideBin(process.argv));
   if (!ethers.utils.isAddress(parsedArgs.newImplementation)) {
     throw new Error(
       `The implementation address is invalid: ${parsedArgs.newImplementation}`,
@@ -78,7 +79,7 @@ async function main() {
     }),
   };
 
-  const governanceMessage = createCircleIntegrationUpgradeVAA(
+  const governanceMessage = await createCircleIntegrationUpgradeVAA(
     chainId,
     newImplementation,
     guardianSet,

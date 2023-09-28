@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { tryNativeToHexString } from "@certusone/wormhole-sdk";
-import { sign } from "@noble/secp256k1";
+import { signAsync } from "@noble/secp256k1";
 
 const circleIntegrationModule =
   "0x000000000000000000000000000000436972636c65496e746567726174696f6e";
@@ -54,10 +54,10 @@ export function createCircleIntegrationUpgradeVAA(
   return encodeAndSignGovernancePayload(payload, guardianSet);
 }
 
-export function encodeAndSignGovernancePayload(
+export async function encodeAndSignGovernancePayload(
   payload: string,
   guardianSet: GuardianSet,
-): string {
+): Promise<string> {
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = 1;
   const sequence = 1;
@@ -79,9 +79,9 @@ export function encodeAndSignGovernancePayload(
 
   const hash = doubleKeccak256(encodedVAABody).substring(2);
 
-  const signatures = guardianSet.guardians
-    .map(({ key, index }) => {
-      const signature = sign(hash, key);
+  const signatures = (await Promise.all(guardianSet.guardians
+    .map(async ({ key, index }) => {
+      const signature = await signAsync(hash, key);
       if (signature.recovery === undefined)
         throw new Error(`Failed to sign message: missing recovery id`);
 
@@ -96,7 +96,7 @@ export function encodeAndSignGovernancePayload(
         ],
       );
       return packSig.substring(2);
-    })
+    })))
     .join("");
 
   const vm = [

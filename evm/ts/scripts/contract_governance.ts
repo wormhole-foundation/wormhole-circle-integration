@@ -1,10 +1,10 @@
 import {ethers} from "ethers";
 import {tryNativeToUint8Array} from "@certusone/wormhole-sdk";
-import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
-import {CircleGovernanceEmitter} from "../test/helpers/mock";
+import {MockGuardians} from "@certusone/wormhole-sdk/lib/esm/mock";
+import {CircleGovernanceEmitter} from "../test/helpers/mock.js";
 import {abi as WORMHOLE_ABI} from "../../out/IWormhole.sol/IWormhole.json";
 import {abi as CIRCLE_INTEGRATION_ABI} from "../../out/CircleIntegration.sol/CircleIntegration.json";
-import {getTimeNow} from "../test/helpers/utils";
+import {getTimeNow} from "../test/helpers/utils.js";
 import {expect} from "chai";
 
 require("dotenv").config({path: process.argv.slice(2)[0]});

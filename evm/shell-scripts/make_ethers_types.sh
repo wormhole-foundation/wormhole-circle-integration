@@ -3,4 +3,4 @@
 SRC=$(dirname $0)/../out
 DST=$(dirname $0)/../ts/src/ethers-contracts
 
-typechain --target=ethers-v5 --out-dir=$DST $SRC/*/*.json
+typechain --target=ethers-v5 --node16-modules --out-dir=$DST $SRC/*/*.json
