@@ -1,9 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
 forge script $(dirname $0)/../forge-scripts/deploy_implementation_only.sol \
     -vv \
-    --rpc-url $RPC \
-    --private-key $PRIVATE_KEY \
-    --broadcast --slow
+    --rpc-url $CONFIGURE_CCTP_RPC \
+    --broadcast --slow $@

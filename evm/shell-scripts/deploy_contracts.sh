@@ -1,6 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 forge script $(dirname $0)/../forge-scripts/deploy_contracts.sol \
-    --rpc-url $RPC \
-    --private-key $PRIVATE_KEY \
-    --broadcast --slow
+    --rpc-url $CONFIGURE_CCTP_RPC \
+    --broadcast --slow $@
