@@ -1,0 +1,40 @@
+[package]
+name = "wormhole-circle-integration-solana"
+description = "Wormhole Circle Integration Program for Solana"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = ["mainnet", "no-idl", "cpi"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+testnet = ["wormhole-cctp-solana/testnet"]
+mainnet = ["wormhole-cctp-solana/mainnet"]
+integration-test = ["mainnet"]
+
+[dependencies]
+wormhole-cctp-solana = { workspace = true, features = ["cpi"] }
+wormhole-raw-vaas.workspace = true
+
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+solana-program.workspace = true
+
+hex.workspace = true
+ruint.workspace = true
+
+cfg-if.workspace = true
+
+ahash.workspace = true
+
+[dev-dependencies]
+hex-literal.workspace = true

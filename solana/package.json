@@ -1,0 +1,32 @@
+{
+  "name": "wormhole-cctp-solana",
+  "version": "0.1.0",
+  "description": "Wormhole Circle Integration",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wormhole-foundation/wormhole-circle-integration.git"
+  },
+  "author": "Wormhole Contributors",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/wormhole-foundation/wormhole-circle-integration/issues"
+  },
+  "homepage": "https://github.com/wormhole-foundation/wormhole-circle-integration#readme",
+  "devDependencies": {
+    "@certusone/wormhole-sdk": "^0.10.5",
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/spl-token": "^0.3.8",
+    "@solana/web3.js": "^1.87.3",
+    "@types/chai": "^4.3.9",
+    "@types/mocha": "^10.0.3",
+    "chai": "^4.3.10",
+    "dotenv": "^16.3.1",
+    "ethers": "^5.7.2",
+    "mocha": "^10.2.0",
+    "prettier": "^3.0.3",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.1",
+    "ts-results": "^3.3.0",
+    "typescript": "^5.2.2"
+  }
+}

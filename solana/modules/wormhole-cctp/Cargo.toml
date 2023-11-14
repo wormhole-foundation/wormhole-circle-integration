@@ -1,0 +1,36 @@
+[package]
+name = "wormhole-cctp-solana"
+description = "Wormhole CCTP Utilities for Solana"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = ["cpi", "mainnet"]
+client = []
+cpi = ["wormhole-core-bridge-solana/cpi", "dep:anchor-spl", "dep:solana-program"]
+mainnet = ["wormhole-core-bridge-solana/mainnet"]
+testnet = ["wormhole-core-bridge-solana/testnet"]
+
+[dependencies]
+wormhole-core-bridge-solana.workspace = true
+wormhole-io.workspace = true
+wormhole-raw-vaas.workspace = true
+
+anchor-lang.workspace = true
+anchor-spl = { optional = true, workspace = true }
+solana-program = { optional = true, workspace = true }
+
+hex.workspace = true
+ruint.workspace = true
+
+cfg-if.workspace = true
+
+[dev-dependencies]
+hex-literal.workspace = true

@@ -1,0 +1,8 @@
+.anchor
+.env
+.private
+.vscode
+artifacts-*
+node_modules
+target
+ts/tests/artifacts

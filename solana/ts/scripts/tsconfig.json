@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": true,
+    "declaration": false,
+    "noEmit": false,
+    "target": "es2022",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  }
+}
