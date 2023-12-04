@@ -1,22 +1,33 @@
+[fmt]
+line_length=100
+
 [profile.default]
 solc_version = "0.8.19"
 optimizer = true
 optimizer_runs = 200
 evm_version = "paris"
+via_ir = true
+extra_output = ["metadata", "storageLayout", "evm.deployedBytecode.immutableReferences"]
 
-test = "forge-test"
+test = "forge/tests"
 
 libs = [
     "lib",
     "node_modules",
 ]
+
 remappings = [
     "@openzeppelin/=node_modules/@openzeppelin/",
     "@solidity-parser/=node_modules/@solidity-parser/",
     "ds-test/=lib/forge-std/lib/ds-test/src/",
     "forge-std/=lib/forge-std/src/",
-    "wormhole/=lib/wormhole/ethereum/contracts",
     "wormhole-forge-sdk/=modules/src",
+    "src/=src",
+    "test-helpers/=forge/tests/helpers",
 ]
+
+gas_reports = ["*"]
+
+gas_limit = "18446744073709551615"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
