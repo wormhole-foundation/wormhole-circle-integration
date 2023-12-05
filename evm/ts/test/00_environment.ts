@@ -10,7 +10,7 @@ import {
   IMessageTransmitter__factory,
   IUSDC__factory,
   IWormhole__factory,
-} from "../src/ethers-contracts/index.js";
+} from "../src/ethers-contracts";
 import {
   AVAX_CIRCLE_BRIDGE_ADDRESS,
   AVAX_FORK_CHAIN_ID,
@@ -26,7 +26,7 @@ import {
   WALLET_PRIVATE_KEY,
   WORMHOLE_GUARDIAN_SET_INDEX,
   WORMHOLE_MESSAGE_FEE,
-} from "./helpers/consts.js";
+} from "./helpers/consts";
 
 describe("Environment Test", () => {
   describe("Global", () => {

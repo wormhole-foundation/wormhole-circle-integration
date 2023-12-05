@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -euo pipefail
 
-npx tsx $(dirname $0)/../ts/scripts/upgrade_proxy.ts $@
+ts-node $(dirname $0)/../ts/scripts/upgrade_proxy.ts $@

@@ -1,5 +1,5 @@
 import {tryNativeToHexString} from "@certusone/wormhole-sdk";
-import {ethSignWithPrivate} from "@certusone/wormhole-sdk/lib/esm/mock";
+import {ethSignWithPrivate} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {ethers} from "ethers";
 import * as fs from "fs";
 

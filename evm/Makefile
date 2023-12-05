@@ -6,7 +6,7 @@ all: build
 
 .PHONY: clean
 clean:
-	rm -rf anvil.log node_modules lib out
+	rm -rf anvil.log node_modules lib out ts/src/ethers-contracts
 
 .PHONY: dependencies
 dependencies: node_modules lib/forge-std lib/wormhole

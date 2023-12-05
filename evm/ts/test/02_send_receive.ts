@@ -19,23 +19,23 @@ import {
   AVAX_FORK_CHAIN_ID,
   ETH_WORMHOLE_ADDRESS,
   AVAX_WORMHOLE_ADDRESS,
-} from "./helpers/consts.js";
+} from "./helpers/consts";
 import {
   ICircleIntegration__factory,
   IUSDC__factory,
   IMockIntegration__factory,
   IWormhole__factory,
-} from "../src/ethers-contracts/index.js";
-import {MockGuardians} from "@certusone/wormhole-sdk/lib/esm/mock";
-import {RedeemParameters, TransferParameters} from "../src/index.js";
-import {findCircleMessageInLogs} from "../src/logs.js";
+} from "../src/ethers-contracts";
+import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
+import {RedeemParameters, TransferParameters} from "../src";
+import {findCircleMessageInLogs} from "../src/logs";
 import {
   MockCircleAttester,
   readCircleIntegrationProxyAddress,
   readMockIntegrationAddress,
   findWormholeMessageInLogs,
   findRedeemEventInLogs,
-} from "./helpers/utils.js";
+} from "./helpers/utils";
 
 describe("Circle Integration Send and Receive", () => {
   // ethereum wallet, CircleIntegration contract and USDC contract

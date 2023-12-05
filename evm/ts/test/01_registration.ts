@@ -9,12 +9,12 @@ import {
   AVAX_LOCALHOST,
   ETH_FORK_CHAIN_ID,
   AVAX_FORK_CHAIN_ID,
-} from "./helpers/consts.js";
-import {ICircleIntegration__factory} from "../src/ethers-contracts/index.js";
-import {MockGuardians} from "@certusone/wormhole-sdk/lib/esm/mock";
+} from "./helpers/consts";
+import {ICircleIntegration__factory} from "../src/ethers-contracts";
+import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
 
-import {CircleGovernanceEmitter} from "./helpers/mock.js";
-import {getTimeNow, readCircleIntegrationProxyAddress} from "./helpers/utils.js";
+import {CircleGovernanceEmitter} from "./helpers/mock";
+import {getTimeNow, readCircleIntegrationProxyAddress} from "./helpers/utils";
 
 describe("Circle Integration Registration", () => {
   // ethereum wallet, CircleIntegration contract and USDC contract
