@@ -23,6 +23,7 @@ sleep 2
 ## first key from mnemonic above
 export PRIVATE_KEY="0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
 
+echo "overriding foundry.toml with foundry-test.toml"
 mkdir -p cache
 cp -v foundry.toml cache/foundry.toml
 cp -v foundry-test.toml foundry.toml
@@ -51,7 +52,7 @@ forge script $EVM_ROOT/forge-scripts/deploy_mock_contracts.sol \
     --private-key $PRIVATE_KEY \
     --broadcast --slow >> deploy.out 2>&1
 
-echo "overriding foundry.toml"
+echo "overriding foundry.toml with cache/foundry.toml"
 mv -v cache/foundry.toml foundry.toml
 
 echo "running tests (found in ts/test)"
