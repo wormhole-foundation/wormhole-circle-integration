@@ -1,69 +1,67 @@
+import { ArgumentParser, Namespace } from "argparse";
 import { ethers } from "ethers";
-import yargs from "yargs";
 import {
   ICircleIntegration,
   ICircleIntegration__factory,
-} from "../src/ethers-contracts/index.js";
-import { addSignerArgsParser, validateSignerArgs, getSigner } from "./signer.js";
+} from "../src/ethers-contracts";
 
 interface Setup {
   circleIntegration: ICircleIntegration;
   governanceMessage: Buffer;
 }
 
-async function setUp(): Promise<Setup> {
-  const parser = addSignerArgsParser(yargs())
-    .help("help", "Upgrade Circle Integration Proxy")
-    .env("CONFIGURE_CCTP")
-    .option("proxy", {
-      string: true,
-      required: true,
-      description: "Proxy Contract Address",
-    })
-    .option("governance-message", {
-      required: true,
-      string: true,
-      description: "Signed Governance Message in base64 format",
-    })
-    .option("rpc", {
-      string: true,
-      required: true,
-      description: "EVM RPC URL",
-    });
+function setUp(): Setup {
+  const parser = new ArgumentParser({
+    description: "Upgrade Circle Integration Proxy",
+  });
 
-  const parsedArgs = await parser.argv;
-  const signerArgs = validateSignerArgs(parsedArgs);
+  parser.add_argument("-m", "--governance-message", {
+    required: true,
+    help: "Signed Governance Message",
+  });
+  parser.add_argument("-p", "--proxy", {
+    required: true,
+    help: "Proxy Contract Address",
+  });
+  parser.add_argument("--rpc-url", { required: true, help: "EVM RPC" });
+  parser.add_argument("--private-key", {
+    required: true,
+    help: "EVM Private Key",
+  });
 
-  const provider = new ethers.providers.StaticJsonRpcProvider(parsedArgs.rpc);
-  const signer = await getSigner(signerArgs, provider);
+  const args: Namespace = parser.parse_args();
+
+  const provider = new ethers.providers.StaticJsonRpcProvider(args.rpc_url);
+  const wallet = new ethers.Wallet(args.private_key, provider);
   const circleIntegration = ICircleIntegration__factory.connect(
-    parsedArgs.proxy,
-    signer,
+    args.proxy,
+    wallet
   );
 
   return {
     circleIntegration,
-    governanceMessage: Buffer.from(parsedArgs.governanceMessage, "base64"),
+    governanceMessage: Buffer.from(args.governance_message, "hex"),
   };
 }
 
 async function main() {
-  const { circleIntegration, governanceMessage } = await setUp();
+  const { circleIntegration, governanceMessage } = setUp();
 
   const chainId = await circleIntegration.chainId();
-  console.log(
-    `Executing mainnet CircleIntegration upgrade on chainId=${chainId}`,
-  );
+  console.log(chainId);
 
-  const tx = await circleIntegration.upgradeContract(governanceMessage);
-  console.log(`Upgrade transaction sent txHash=${tx.hash}`);
-
-  const receipt = await tx.wait();
-  if (receipt.status !== 1) {
-    console.log("Failed transaction");
+  const tx = circleIntegration
+    .upgradeContract(governanceMessage)
+    .then((tx) => tx.wait())
+    .catch((msg) => {
+      // should not happen
+      console.log(msg);
+      return null;
+    });
+  if (tx === null) {
+    console.log("failed transaction");
     return 1;
   } else {
-    console.log("Transaction successful");
     return 0;
   }
 }

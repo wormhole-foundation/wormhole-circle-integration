@@ -1,2 +1,2 @@
-export * from "./ethers-contracts/index.js";
-export * from "./types.js";
+export * from "./ethers-contracts";
+export * from "./types";

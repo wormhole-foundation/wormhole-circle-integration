@@ -1,4 +1,4 @@
-import {GovernanceEmitter} from "@certusone/wormhole-sdk/lib/esm/mock";
+import {GovernanceEmitter} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import {ethers} from "ethers";
 
 export interface Transfer {
