@@ -1,3 +1,6 @@
+.env
+.private
+.vscode
 anvil*.log
 broadcast*
 cache
