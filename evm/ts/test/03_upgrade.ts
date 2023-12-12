@@ -9,12 +9,12 @@ import {
   AVAX_LOCALHOST,
   ETH_FORK_CHAIN_ID,
   AVAX_FORK_CHAIN_ID,
-} from "./helpers/consts";
-import {ICircleIntegration__factory} from "../src/ethers-contracts";
-import {MockGuardians} from "@certusone/wormhole-sdk/lib/cjs/mock";
+} from "./helpers/consts.js";
+import {ICircleIntegration__factory} from "../src/ethers-contracts/index.js";
+import {MockGuardians} from "@certusone/wormhole-sdk/lib/esm/mock";
 
-import {CircleGovernanceEmitter} from "./helpers/mock";
-import {getTimeNow, readCircleIntegrationProxyAddress} from "./helpers/utils";
+import {CircleGovernanceEmitter} from "./helpers/mock.js";
+import {getTimeNow, readCircleIntegrationProxyAddress} from "./helpers/utils.js";
 
 const {execSync} = require("child_process");
 
