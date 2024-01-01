@@ -111,8 +111,11 @@ contract CircleIntegrationGovernance is CircleIntegrationGetters, ERC1967Upgrade
 
     /**
      * @notice `upgradeContract` upgrades the implementation (logic) contract and
-     * initializes the new implementation.
+     *         initializes the new implementation.
      * @param encodedMessage Attested Wormhole governance message with the following
+     *
+     * @dev SECURITY: This method requires a valid governance VAA signed by a quorum of guardians.
+     *
      * relevant fields:
      * - Field Bytes Type Index
      * - newImplementation 32 bytes32 35
