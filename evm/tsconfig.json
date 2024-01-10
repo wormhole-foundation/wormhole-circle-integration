@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "outdir": "build",
     "types": ["node", "mocha", "chai"],
     "typeRoots": ["./node_modules/@types"],
     "lib": ["ES2022", "dom"],
