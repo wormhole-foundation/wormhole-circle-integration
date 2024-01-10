@@ -1459,6 +1459,22 @@
     "@ledgerhq/hw-transport-node-hid" "6.27.15"
     ethers "^5.7.0"
 
+"@xlabs-xyz/typechain@^8.3.3":
+  version "8.3.3"
+  resolved "https://registry.yarnpkg.com/@xlabs-xyz/typechain/-/typechain-8.3.3.tgz#e64579720e7e7d830ae57105f32de2955a4cdfd1"
+  integrity sha512-C/59zOkCQPtTWibBDBzVeYl2/9sRl7h9RWb8bIZ2x5tQnuEAzUmsY6rKJ+S1QYk4gpw8AU5zjLdZFGKhEDPxhg==
+  dependencies:
+    "@types/prettier" "^2.1.1"
+    debug "^4.3.1"
+    fs-extra "^7.0.0"
+    glob "7.1.7"
+    js-sha3 "^0.8.0"
+    lodash "^4.17.15"
+    mkdirp "^1.0.4"
+    prettier "^2.3.1"
+    ts-command-line-args "^2.2.0"
+    ts-essentials "^7.0.1"
+
 "@xpla/xpla.js@^0.2.1":
   version "0.2.3"
   resolved "https://registry.yarnpkg.com/@xpla/xpla.js/-/xpla.js-0.2.3.tgz#c614d98e599fe03f9edc425f50f66481983e8dac"
