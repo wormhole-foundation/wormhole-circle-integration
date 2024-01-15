@@ -1,6 +1,6 @@
 include env/testing.env
 
-.PHONY: dependencies test clean all
+.PHONY: dependencies test clean all ci
 
 all: build
 
@@ -27,6 +27,10 @@ build: dependencies
 .PHONY: test
 test: dependencies
 	forge test --fork-url ${TESTING_FORK_RPC} -vv
+
+.PHONY: ci
+ci: dependencies
+	forge test --fork-url ${CI_FORK_RPC} -vv --fail-fast
 
 .PHONY: gas-report
 gas-report: dependencies

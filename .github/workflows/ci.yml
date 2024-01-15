@@ -23,7 +23,9 @@ jobs:
         uses: "foundry-rs/foundry-toolchain@v1"
 
       - name: "Run the tests"
-        run: "cd evm && make test"
+        env:
+          CI_FORK_RPC: ${{ secrets.POLYGON_MUMBAI_RPC }}
+        run: "cd evm && make ci"
 
       - name: "Add test summary"
         run: |
