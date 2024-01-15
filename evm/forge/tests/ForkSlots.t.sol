@@ -98,7 +98,7 @@ contract ForkSlots is Test {
         assertFalse(isVaaConsumed, "VAA already consumed");
 
         // Before upgrading, fetch some expected values.
-        uint16 expectedRegisteredChainId = 2;
+        uint16 expectedRegisteredChainId = 6; // Avalanche (Fuji)
         bytes32 expectedEmitter = forked.getRegisteredEmitter(expectedRegisteredChainId);
         uint32 expectedCctpDomain = forked.getDomainFromChainId(expectedRegisteredChainId);
 
