@@ -11,7 +11,7 @@
   "dependencies": {
     "@certusone/wormhole-sdk": "^0.9.0",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
-    "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts": "^4.9.5",
     "@typechain/ethers-v5": "^10.1.1",
     "@types/argparse": "^2.0.10",
     "@types/chai": "^4.3.3",
@@ -28,8 +28,8 @@
     "typescript": "^4.8.3"
   },
   "scripts": {
-    "build-types": "bash shell-scripts/make_ethers_types.sh",
-    "deploy-implementation-only": "bash shell-scripts/deploy_implementation_only.sh",
-    "upgrade-proxy": "bash shell-scripts/upgrade_proxy.sh"
+    "build-types": "typechain --target=ethers-v5 --out-dir=ts/src/ethers-contracts out/*/*.json",
+    "deploy-implementation-only": "bash sh/deploy_implementation_only.sh",
+    "upgrade-proxy": "bash sh/upgrade_proxy.sh"
   }
 }
