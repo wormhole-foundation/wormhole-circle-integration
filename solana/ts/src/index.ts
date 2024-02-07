@@ -1,40 +1,35 @@
-export * from "./circle";
+export * from "./cctp";
 export * from "./consts";
 export * from "./messages";
 export * from "./state";
 export * from "./wormhole";
 
-import { BN, EventParser, Program, utils as anchorUtils } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
 import {
-    AddressLookupTableAccount,
     Connection,
     PublicKey,
     SYSVAR_CLOCK_PUBKEY,
     SYSVAR_RENT_PUBKEY,
     SystemProgram,
     TransactionInstruction,
-    VersionedTransactionResponse,
 } from "@solana/web3.js";
 import {
     IDL,
     WormholeCircleIntegrationSolana,
 } from "../../target/types/wormhole_circle_integration_solana";
 import {
-    CctpMessage,
     CctpTokenBurnMessage,
     MessageTransmitterProgram,
     TokenMessengerMinterProgram,
-} from "./circle";
+} from "./cctp";
 import { BPF_LOADER_UPGRADEABLE_ID } from "./consts";
-import { Custodian, RegisteredEmitter } from "./state";
-import { Claim, VaaAccount } from "./wormhole";
-import { PostedMessageData } from "@certusone/wormhole-sdk/lib/cjs/solana/wormhole";
-import { Deposit } from "./messages";
+import { ConsumedVaa, Custodian, RegisteredEmitter } from "./state";
+import { VaaAccount } from "./wormhole";
 
 export const PROGRAM_IDS = [
     "Wormho1eCirc1e1ntegration111111111111111111", // mainnet placeholder
-    "wCCTPvsyeL9qYqbHTv3DUAyzEfYcyHoYw5c4mgcbBeW", // testnet
+    "wcihrWf1s91vfukW7LW8ZvR1rzpeZ9BrtZ8oyPkWK5d", // testnet
 ] as const;
 
 export type ProgramId = (typeof PROGRAM_IDS)[number];
@@ -83,30 +78,31 @@ export type TransferTokensWithPayloadAccounts = PublishMessageAccounts & {
     remoteTokenMessenger: PublicKey;
     tokenMinter: PublicKey;
     localToken: PublicKey;
+    tokenMessengerMinterEventAuthority: PublicKey;
     coreBridgeProgram: PublicKey;
     tokenMessengerMinterProgram: PublicKey;
     messageTransmitterProgram: PublicKey;
-    tokenProgram: PublicKey;
 };
 
 export type RedeemTokensWithPayloadAccounts = {
     custodian: PublicKey;
-    claim: PublicKey;
+    consumedVaa: PublicKey;
     mintRecipientAuthority: PublicKey;
     mintRecipient: PublicKey;
     registeredEmitter: PublicKey;
     messageTransmitterAuthority: PublicKey;
     messageTransmitterConfig: PublicKey;
     usedNonces: PublicKey;
+    messageTransmitterEventAuthority: PublicKey;
     tokenMessenger: PublicKey;
     remoteTokenMessenger: PublicKey;
     tokenMinter: PublicKey;
     localToken: PublicKey;
     tokenPair: PublicKey;
     tokenMessengerMinterCustodyToken: PublicKey;
+    tokenMessengerMinterEventAuthority: PublicKey;
     tokenMessengerMinterProgram: PublicKey;
     messageTransmitterProgram: PublicKey;
-    tokenProgram: PublicKey;
 };
 
 export type SolanaWormholeCctpTxData = {
@@ -166,6 +162,10 @@ export class CircleIntegrationProgram {
         return PublicKey.findProgramAddressSync([Buffer.from("custody")], this.ID)[0];
     }
 
+    consumedVaaAddress(vaaHash: Array<number> | Uint8Array): PublicKey {
+        return ConsumedVaa.address(this.ID, vaaHash);
+    }
+
     commonAccounts(mint?: PublicKey): WormholeCctpCommonAccounts {
         const custodian = this.custodianAddress();
         const { coreBridgeConfig, coreEmitterSequence, coreFeeCollector, coreBridgeProgram } =
@@ -197,9 +197,12 @@ export class CircleIntegrationProgram {
             coreBridgeProgram,
             tokenMessenger: tokenMessengerMinterProgram.tokenMessengerAddress(),
             tokenMinter: tokenMessengerMinterProgram.tokenMinterAddress(),
-            tokenMessengerMinterSenderAuthority: tokenMessengerMinterProgram.senderAuthority(),
+            tokenMessengerMinterSenderAuthority:
+                tokenMessengerMinterProgram.senderAuthorityAddress(),
             tokenMessengerMinterProgram: tokenMessengerMinterProgram.ID,
-            messageTransmitterAuthority: messageTransmitterProgram.authorityAddress(),
+            messageTransmitterAuthority: messageTransmitterProgram.authorityAddress(
+                tokenMessengerMinterProgram.ID,
+            ),
             messageTransmitterConfig: messageTransmitterProgram.messageTransmitterConfigAddress(),
             messageTransmitterProgram: messageTransmitterProgram.ID,
             tokenProgram: splToken.TOKEN_PROGRAM_ID,
@@ -230,11 +233,6 @@ export class CircleIntegrationProgram {
         const { payer, vaa, remoteTokenMessenger: inputRemoteTokenMessenger } = accounts;
 
         const vaaAcct = await VaaAccount.fetch(this.program.provider.connection, vaa);
-
-        // Determine claim PDA.
-        const { chain, address, sequence } = vaaAcct.emitterInfo();
-        const claim = Claim.address(this.ID, address, chain, sequence);
-
         const payload = vaaAcct.payload();
         const registeredEmitter = this.registeredEmitterAddress(payload.readUInt16BE(35));
         const remoteTokenMessenger = (() => {
@@ -254,7 +252,7 @@ export class CircleIntegrationProgram {
                 payer,
                 custodian: this.custodianAddress(),
                 vaa,
-                claim,
+                consumedVaa: this.consumedVaaAddress(vaaAcct.digest()),
                 registeredEmitter,
                 remoteTokenMessenger,
             })
@@ -269,11 +267,6 @@ export class CircleIntegrationProgram {
         const { payer, vaa, buffer: inputBuffer } = accounts;
 
         const vaaAcct = await VaaAccount.fetch(this.program.provider.connection, vaa);
-
-        // Determine claim PDA.
-        const { chain, address, sequence } = vaaAcct.emitterInfo();
-        const claim = Claim.address(this.ID, address, chain, sequence);
-
         const payload = vaaAcct.payload();
 
         return this.program.methods
@@ -282,7 +275,7 @@ export class CircleIntegrationProgram {
                 payer,
                 custodian: this.custodianAddress(),
                 vaa,
-                claim,
+                consumedVaa: this.consumedVaaAddress(vaaAcct.digest()),
                 upgradeAuthority: this.upgradeAuthorityAddress(),
                 spill: payer,
                 buffer: inputBuffer ?? new PublicKey(payload.subarray(-32)),
@@ -311,9 +304,9 @@ export class CircleIntegrationProgram {
             remoteTokenMessenger,
             tokenMinter,
             localToken,
+            tokenMessengerMinterEventAuthority,
             messageTransmitterProgram,
             tokenMessengerMinterProgram,
-            tokenProgram,
         } = this.tokenMessengerMinterProgram().depositForBurnWithCallerAccounts(mint, remoteDomain);
 
         const custodian = this.custodianAddress();
@@ -333,10 +326,10 @@ export class CircleIntegrationProgram {
             remoteTokenMessenger,
             tokenMinter,
             localToken,
+            tokenMessengerMinterEventAuthority,
             coreBridgeProgram,
             tokenMessengerMinterProgram,
             messageTransmitterProgram,
-            tokenProgram,
         };
     }
 
@@ -346,10 +339,11 @@ export class CircleIntegrationProgram {
             mint: PublicKey;
             burnSource: PublicKey;
             coreMessage: PublicKey;
+            cctpMessage: PublicKey;
         },
         args: TransferTokensWithPayloadArgs,
     ): Promise<TransactionInstruction> {
-        let { payer, burnSource, mint, coreMessage } = accounts;
+        let { payer, burnSource, mint, coreMessage, cctpMessage } = accounts;
 
         const { amount, targetChain, mintRecipient, wormholeMessageNonce, payload } = args;
 
@@ -367,9 +361,9 @@ export class CircleIntegrationProgram {
             remoteTokenMessenger,
             tokenMinter,
             localToken,
+            tokenMessengerMinterEventAuthority,
             tokenMessengerMinterProgram,
             messageTransmitterProgram,
-            tokenProgram,
         } = await this.transferTokensWithPayloadAccounts(mint, targetChain);
 
         return this.program.methods
@@ -388,6 +382,7 @@ export class CircleIntegrationProgram {
                 registeredEmitter,
                 coreBridgeConfig,
                 coreMessage,
+                cctpMessage,
                 coreEmitterSequence,
                 coreFeeCollector,
                 tokenMessengerMinterSenderAuthority,
@@ -396,10 +391,10 @@ export class CircleIntegrationProgram {
                 remoteTokenMessenger,
                 tokenMinter,
                 localToken,
+                tokenMessengerMinterEventAuthority,
                 coreBridgeProgram,
                 tokenMessengerMinterProgram,
                 messageTransmitterProgram,
-                tokenProgram,
             })
             .instruction();
     }
@@ -416,42 +411,43 @@ export class CircleIntegrationProgram {
 
         // Determine claim PDA.
         const vaaAcct = await VaaAccount.fetch(this.program.provider.connection, vaa);
-        const { chain, address, sequence } = vaaAcct.emitterInfo();
-        const claim = Claim.address(this.ID, address, chain, sequence);
+        const { chain } = vaaAcct.emitterInfo();
 
-        const messageTransmitterProgram = this.messageTransmitterProgram();
         const {
             authority: messageTransmitterAuthority,
             messageTransmitterConfig,
             usedNonces,
             tokenMessengerMinterProgram,
+            messageTransmitterEventAuthority,
+            messageTransmitterProgram,
             tokenMessenger,
             remoteTokenMessenger,
             tokenMinter,
             localToken,
             tokenPair,
             custodyToken: tokenMessengerMinterCustodyToken,
-            tokenProgram,
-        } = messageTransmitterProgram.receiveMessageAccounts(mint, msg);
+            eventAuthority: tokenMessengerMinterEventAuthority,
+        } = this.messageTransmitterProgram().receiveTokenMessengerMinterMessageAccounts(mint, msg);
 
         return {
             custodian: this.custodianAddress(),
-            claim,
+            consumedVaa: this.consumedVaaAddress(vaaAcct.digest()),
             mintRecipientAuthority,
             mintRecipient,
             registeredEmitter: this.registeredEmitterAddress(chain),
             messageTransmitterAuthority,
             messageTransmitterConfig,
             usedNonces,
+            messageTransmitterEventAuthority,
             tokenMessenger,
             remoteTokenMessenger,
             tokenMinter,
             localToken,
             tokenPair,
             tokenMessengerMinterCustodyToken,
+            tokenMessengerMinterEventAuthority,
             tokenMessengerMinterProgram,
-            messageTransmitterProgram: messageTransmitterProgram.ID,
-            tokenProgram,
+            messageTransmitterProgram,
         };
     }
 
@@ -472,22 +468,23 @@ export class CircleIntegrationProgram {
 
         const {
             custodian,
-            claim,
+            consumedVaa,
             mintRecipientAuthority,
             mintRecipient,
             registeredEmitter,
             messageTransmitterAuthority,
             messageTransmitterConfig,
             usedNonces,
+            messageTransmitterEventAuthority,
             tokenMessenger,
             remoteTokenMessenger,
             tokenMinter,
             localToken,
             tokenPair,
             tokenMessengerMinterCustodyToken,
+            tokenMessengerMinterEventAuthority,
             tokenMessengerMinterProgram,
             messageTransmitterProgram,
-            tokenProgram,
         } = await this.redeemTokensWithPayloadAccounts(vaa, encodedCctpMessage);
 
         return this.program.methods
@@ -496,22 +493,23 @@ export class CircleIntegrationProgram {
                 payer,
                 custodian,
                 vaa,
-                claim,
+                consumedVaa,
                 mintRecipientAuthority: inputMintRecipientAuthority ?? mintRecipientAuthority,
                 mintRecipient,
                 registeredEmitter,
                 messageTransmitterAuthority,
                 messageTransmitterConfig,
                 usedNonces,
+                messageTransmitterEventAuthority,
                 tokenMessenger,
                 remoteTokenMessenger,
                 tokenMinter,
                 localToken,
                 tokenPair,
                 tokenMessengerMinterCustodyToken,
+                tokenMessengerMinterEventAuthority,
                 tokenMessengerMinterProgram,
                 messageTransmitterProgram,
-                tokenProgram,
             })
             .instruction();
     }
@@ -589,108 +587,6 @@ export class CircleIntegrationProgram {
             }
         }
     }
-
-    async parseTransactionReceipt(
-        txReceipt: VersionedTransactionResponse,
-        addressLookupTableAccounts?: AddressLookupTableAccount[],
-    ): Promise<SolanaWormholeCctpTxData[]> {
-        if (txReceipt.meta === null) {
-            throw new Error("meta not found in tx");
-        }
-
-        const txMeta = txReceipt.meta;
-        if (txMeta.logMessages === undefined || txMeta.logMessages === null) {
-            throw new Error("logMessages not found in tx");
-        }
-
-        const txLogMessages = txMeta.logMessages;
-
-        // Decode message field from MessageSent event.
-        const messageTransmitterProgram = this.messageTransmitterProgram();
-        const parser = new EventParser(
-            messageTransmitterProgram.ID,
-            messageTransmitterProgram.program.coder,
-        );
-
-        // Map these puppies based on nonce.
-        const encodedCctpMessages = new Map<bigint, Buffer>();
-        for (const parsed of parser.parseLogs(txLogMessages, false)) {
-            const msg = parsed.data.message as Buffer;
-            encodedCctpMessages.set(CctpMessage.decode(msg).cctp.nonce, msg);
-        }
-
-        const fetchedKeys = txReceipt.transaction.message.getAccountKeys({
-            addressLookupTableAccounts,
-        });
-        const accountKeys = fetchedKeys.staticAccountKeys;
-        if (fetchedKeys.accountKeysFromLookups !== undefined) {
-            accountKeys.push(
-                ...fetchedKeys.accountKeysFromLookups.writable,
-                ...fetchedKeys.accountKeysFromLookups.readonly,
-            );
-        }
-
-        const coreBridgeProgramIndex = accountKeys.findIndex((key) =>
-            key.equals(this.coreBridgeProgramId()),
-        );
-        const tokenMessengerMinterProgramIndex = accountKeys.findIndex((key) =>
-            key.equals(this.tokenMessengerMinterProgram().ID),
-        );
-        const messageTransmitterProgramIndex = accountKeys.findIndex((key) =>
-            key.equals(this.messageTransmitterProgram().ID),
-        );
-        if (
-            coreBridgeProgramIndex == -1 &&
-            tokenMessengerMinterProgramIndex == -1 &&
-            messageTransmitterProgramIndex == -1
-        ) {
-            return [];
-        }
-
-        if (txMeta.innerInstructions === undefined || txMeta.innerInstructions === null) {
-            throw new Error("innerInstructions not found in tx");
-        }
-        const txInnerInstructions = txMeta.innerInstructions;
-
-        const custodian = this.custodianAddress();
-        const postedMessageKeys: PublicKey[] = [];
-        for (const innerIx of txInnerInstructions) {
-            // Traverse instructions to find messages posted by the Wormhole Circle Integration program.
-            for (const ixInfo of innerIx.instructions) {
-                if (
-                    ixInfo.programIdIndex == coreBridgeProgramIndex &&
-                    anchorUtils.bytes.bs58.decode(ixInfo.data)[0] == 1 &&
-                    accountKeys[ixInfo.accounts[2]].equals(custodian)
-                ) {
-                    postedMessageKeys.push(accountKeys[ixInfo.accounts[1]]);
-                }
-            }
-        }
-
-        return this.program.provider.connection
-            .getMultipleAccountsInfo(postedMessageKeys)
-            .then((infos) =>
-                infos.map((info, i) => {
-                    if (info === null) {
-                        throw new Error("message info is null");
-                    }
-                    const payload = info.data.subarray(95);
-                    const nonce = Deposit.decode(payload).deposit.cctpNonce;
-                    const encodedCctpMessage = encodedCctpMessages.get(nonce);
-                    if (encodedCctpMessage === undefined) {
-                        throw new Error(
-                            `cannot find CCTP message with nonce ${nonce} in tx receipt`,
-                        );
-                    }
-
-                    return {
-                        coreMessageAccount: postedMessageKeys[i],
-                        coreMessageSequence: info.data.readBigUInt64LE(49),
-                        encodedCctpMessage,
-                    };
-                }),
-            );
-    }
 }
 
 export function mainnet(): ProgramId {
@@ -698,5 +594,5 @@ export function mainnet(): ProgramId {
 }
 
 export function testnet(): ProgramId {
-    return "wCCTPvsyeL9qYqbHTv3DUAyzEfYcyHoYw5c4mgcbBeW";
+    return "wcihrWf1s91vfukW7LW8ZvR1rzpeZ9BrtZ8oyPkWK5d";
 }

@@ -1,9 +1,9 @@
 import { Program } from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { CctpTokenBurnMessage } from "../messages";
 import { TokenMessengerMinterProgram } from "../tokenMessengerMinter";
 import { IDL, MessageTransmitter } from "../types/message_transmitter";
+import { MessageSent } from "./MessageSent";
 import { MessageTransmitterConfig } from "./MessageTransmitterConfig";
 import { UsedNonses } from "./UsedNonces";
 
@@ -11,18 +11,20 @@ export const PROGRAM_IDS = ["CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd"] as c
 
 export type ProgramId = (typeof PROGRAM_IDS)[number];
 
-export type ReceiveMessageAccounts = {
+export type ReceiveTokenMessengerMinterMessageAccounts = {
     authority: PublicKey;
     messageTransmitterConfig: PublicKey;
     usedNonces: PublicKey;
     tokenMessengerMinterProgram: PublicKey;
+    messageTransmitterEventAuthority: PublicKey;
+    messageTransmitterProgram: PublicKey;
     tokenMessenger: PublicKey;
     remoteTokenMessenger: PublicKey;
     tokenMinter: PublicKey;
     localToken: PublicKey;
     tokenPair: PublicKey;
     custodyToken: PublicKey;
-    tokenProgram: PublicKey;
+    eventAuthority: PublicKey;
 };
 
 export class MessageTransmitterProgram {
@@ -46,46 +48,26 @@ export class MessageTransmitterProgram {
     }
 
     async fetchMessageTransmitterConfig(addr: PublicKey): Promise<MessageTransmitterConfig> {
-        const {
-            owner,
-            pendingOwner,
-            attesterManager,
-            pauser,
-            paused,
-            localDomain,
-            version,
-            signatureThreshold,
-            enabledAttesters,
-            maxMessageBodySize,
-            nextAvailableNonce,
-            authorityBump,
-        } = await this.program.account.messageTransmitter.fetch(addr);
-
-        return new MessageTransmitterConfig(
-            owner,
-            pendingOwner,
-            attesterManager,
-            pauser,
-            paused,
-            localDomain,
-            version,
-            signatureThreshold,
-            enabledAttesters.map((addr) => Array.from(addr.toBuffer())),
-            BigInt(maxMessageBodySize.toString()),
-            BigInt(nextAvailableNonce.toString()),
-            authorityBump,
-        );
+        return this.program.account.messageTransmitter.fetch(addr);
     }
 
     usedNoncesAddress(remoteDomain: number, nonce: bigint): PublicKey {
         return UsedNonses.address(this.ID, remoteDomain, nonce);
     }
 
-    authorityAddress(): PublicKey {
+    authorityAddress(cpiProgramId: PublicKey): PublicKey {
         return PublicKey.findProgramAddressSync(
-            [Buffer.from("message_transmitter_authority")],
+            [Buffer.from("message_transmitter_authority"), cpiProgramId.toBuffer()],
             this.ID,
         )[0];
+    }
+
+    eventAuthorityAddress(): PublicKey {
+        return PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], this.ID)[0];
+    }
+
+    fetchMessageSent(addr: PublicKey): Promise<MessageSent> {
+        return this.program.account.messageSent.fetch(addr);
     }
 
     tokenMessengerMinterProgram(): TokenMessengerMinterProgram {
@@ -108,10 +90,10 @@ export class MessageTransmitterProgram {
         }
     }
 
-    receiveMessageAccounts(
+    receiveTokenMessengerMinterMessageAccounts(
         mint: PublicKey,
         circleMessage: CctpTokenBurnMessage | Buffer,
-    ): ReceiveMessageAccounts {
+    ): ReceiveTokenMessengerMinterMessageAccounts {
         const {
             cctp: { sourceDomain, nonce },
             burnTokenAddress,
@@ -119,10 +101,12 @@ export class MessageTransmitterProgram {
 
         const tokenMessengerMinterProgram = this.tokenMessengerMinterProgram();
         return {
-            authority: this.authorityAddress(),
+            authority: this.authorityAddress(tokenMessengerMinterProgram.ID),
             messageTransmitterConfig: this.messageTransmitterConfigAddress(),
             usedNonces: this.usedNoncesAddress(sourceDomain, nonce),
             tokenMessengerMinterProgram: tokenMessengerMinterProgram.ID,
+            messageTransmitterEventAuthority: this.eventAuthorityAddress(),
+            messageTransmitterProgram: this.ID,
             tokenMessenger: tokenMessengerMinterProgram.tokenMessengerAddress(),
             remoteTokenMessenger:
                 tokenMessengerMinterProgram.remoteTokenMessengerAddress(sourceDomain),
@@ -130,7 +114,7 @@ export class MessageTransmitterProgram {
             localToken: tokenMessengerMinterProgram.localTokenAddress(mint),
             tokenPair: tokenMessengerMinterProgram.tokenPairAddress(sourceDomain, burnTokenAddress),
             custodyToken: tokenMessengerMinterProgram.custodyTokenAddress(mint),
-            tokenProgram: TOKEN_PROGRAM_ID,
+            eventAuthority: tokenMessengerMinterProgram.eventAuthorityAddress(),
         };
     }
 }

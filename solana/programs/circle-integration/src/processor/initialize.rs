@@ -46,8 +46,8 @@ pub struct Initialize<'info> {
 
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     ctx.accounts.custodian.set_inner(Custodian {
-        bump: ctx.bumps["custodian"],
-        upgrade_authority_bump: ctx.bumps["upgrade_authority"],
+        bump: ctx.bumps.custodian,
+        upgrade_authority_bump: ctx.bumps.upgrade_authority,
     });
 
     // Finally set the upgrade authority to this program's upgrade PDA.

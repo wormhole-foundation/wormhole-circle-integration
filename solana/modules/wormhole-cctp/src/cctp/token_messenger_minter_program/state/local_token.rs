@@ -7,8 +7,8 @@ pub struct LocalToken {
     pub burn_limit_per_message: u64,
     pub messages_sent: u64,
     pub messages_received: u64,
-    pub amount_sent: u64,
-    pub amount_received: u64,
+    pub amount_sent: u128,
+    pub amount_received: u128,
     pub bump: u8,
     pub custody_bump: u8,
 }

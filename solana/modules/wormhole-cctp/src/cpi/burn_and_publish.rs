@@ -4,7 +4,7 @@ use wormhole_io::TypePrefixedPayload;
 
 /// Arguments used to burn Circle-supported tokens and publish a Wormhole Core Bridge message.
 #[derive(Debug, AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct BurnAndPublishArgs<P: TypePrefixedPayload> {
+pub struct BurnAndPublishArgs {
     /// Token account where assets originated from. This pubkey is encoded in the [Deposit] message.
     /// If this will be useful to an integrator, he should encode where the assets have been burned
     /// from if it was not burned directly when calling [burn_and_publish].
@@ -30,7 +30,7 @@ pub struct BurnAndPublishArgs<P: TypePrefixedPayload> {
 
     /// Arbitrary payload, which can be used to encode instructions or data for another network's
     /// smart contract.
-    pub payload: P,
+    pub payload: Vec<u8>,
 }
 
 /// Method to publish a Wormhole Core Bridge message alongside a CCTP message that burns a
@@ -40,7 +40,7 @@ pub struct BurnAndPublishArgs<P: TypePrefixedPayload> {
 /// assets originated from. A program calling this method will not necessarily be burning assets
 /// from this token account directly. So this field is used to indicate the origin of the burned
 /// assets.
-pub fn burn_and_publish<'info, P>(
+pub fn burn_and_publish<'info>(
     cctp_ctx: CpiContext<
         '_,
         '_,
@@ -49,11 +49,8 @@ pub fn burn_and_publish<'info, P>(
         cctp::token_messenger_minter_program::cpi::DepositForBurnWithCaller<'info>,
     >,
     wormhole_ctx: CpiContext<'_, '_, '_, 'info, core_bridge_program::cpi::PostMessage<'info>>,
-    args: BurnAndPublishArgs<P>,
-) -> Result<u64>
-where
-    P: TypePrefixedPayload,
-{
+    args: BurnAndPublishArgs,
+) -> Result<u64> {
     let BurnAndPublishArgs {
         burn_source,
         destination_caller,
@@ -64,7 +61,7 @@ where
         payload,
     } = args;
 
-    let (source_cctp_domain, cctp_nonce) = {
+    let cctp_nonce = {
         let mut data: &[_] = &cctp_ctx
             .accounts
             .message_transmitter_config
@@ -73,18 +70,31 @@ where
             cctp::message_transmitter_program::MessageTransmitterConfig,
         >::try_deserialize_unchecked(&mut data)?;
 
-        (config.local_domain, config.next_available_nonce)
+        // Publish message via Core Bridge. This includes paying the message fee.
+        core_bridge_program::cpi::post_message(
+            wormhole_ctx,
+            core_bridge_program::cpi::PostMessageArgs {
+                nonce: wormhole_message_nonce,
+                payload: Deposit {
+                    token_address: cctp_ctx.accounts.mint.key.to_bytes(),
+                    amount: ruint::aliases::U256::from(amount),
+                    source_cctp_domain: config.local_domain,
+                    destination_cctp_domain,
+                    cctp_nonce: config.next_available_nonce,
+                    burn_source: burn_source
+                        .unwrap_or(cctp_ctx.accounts.burn_token.key())
+                        .to_bytes(),
+                    mint_recipient,
+                    payload,
+                }
+                .to_vec_payload(),
+                commitment: core_bridge_program::Commitment::Finalized,
+            },
+        )?;
+
+        config.next_available_nonce
     };
 
-    let token_address = cctp_ctx.accounts.mint.key.to_bytes();
-    let burn_source = burn_source
-        .unwrap_or(cctp_ctx.accounts.src_token.key())
-        .to_bytes();
-
-    // We want to make this call as early as possible because the deposit for burn
-    // message is an Anchor event (i.e. written to the program log). We hope that integrators will
-    // not log too much prior to this call because this can push the event out of the log buffer,
-    // which is 10KB.
     cctp::token_messenger_minter_program::cpi::deposit_for_burn_with_caller(
         cctp_ctx,
         cctp::token_messenger_minter_program::cpi::DepositForBurnWithCallerParams {
@@ -92,25 +102,6 @@ where
             destination_domain: destination_cctp_domain,
             mint_recipient,
             destination_caller,
-        },
-    )?;
-
-    // Publish message via Core Bridge. This includes paying the message fee.
-    core_bridge_program::cpi::post_message(
-        wormhole_ctx,
-        core_bridge_program::cpi::PostMessageArgs {
-            nonce: wormhole_message_nonce,
-            payload: wormhole_io::TypePrefixedPayload::to_vec_payload(&Deposit {
-                token_address,
-                amount: ruint::aliases::U256::from(amount),
-                source_cctp_domain,
-                destination_cctp_domain,
-                cctp_nonce,
-                burn_source,
-                mint_recipient,
-                payload,
-            }),
-            commitment: core_bridge_program::Commitment::Finalized,
         },
     )?;
 

@@ -11,7 +11,7 @@ import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from "@so
 import "dotenv/config";
 import { CircleIntegrationProgram } from "../src";
 
-const PROGRAM_ID = "wCCTPvsyeL9qYqbHTv3DUAyzEfYcyHoYw5c4mgcbBeW";
+const PROGRAM_ID = "wcihrWf1s91vfukW7LW8ZvR1rzpeZ9BrtZ8oyPkWK5d";
 
 // Here we go.
 main();
@@ -19,7 +19,7 @@ main();
 // impl
 
 async function main() {
-    let govSequence = 6900n;
+    let govSequence = 6920n;
 
     const connection = new Connection("https://api.devnet.solana.com", "confirmed");
     const circleIntegration = new CircleIntegrationProgram(connection, PROGRAM_ID);
@@ -30,12 +30,12 @@ async function main() {
     const payer = Keypair.fromSecretKey(Buffer.from(process.env.SOLANA_PRIVATE_KEY, "hex"));
 
     // Set up CCTP Program.
-    // await intialize(connection, payer);
+    //await intialize(circleIntegration, payer);
 
     // Register emitter and domain.
     {
-        const foreignChain = "ethereum";
-        const foreignEmitter = "0x0a69146716b3a21622287efa1607424c663069a4";
+        const foreignChain = "sepolia";
+        const foreignEmitter = "0x2703483B1a5a7c577e8680de9Df8Be03c6f30e3c";
         const cctpDomain = 0;
 
         await registerEmitterAndDomain(
@@ -62,7 +62,7 @@ async function main() {
         );
     }
     {
-        const foreignChain = "optimism";
+        const foreignChain = "optimism_sepolia";
         const foreignEmitter = "0x2703483B1a5a7c577e8680de9Df8Be03c6f30e3c";
         const cctpDomain = 2;
 
@@ -76,9 +76,37 @@ async function main() {
         );
     }
     {
-        const foreignChain = "arbitrum";
-        const foreignEmitter = "0x2E8F5E00a9C5D450A72700546B89E2b70DfB00f2";
+        const foreignChain = "arbitrum_sepolia";
+        const foreignEmitter = "0x2703483B1a5a7c577e8680de9Df8Be03c6f30e3c";
         const cctpDomain = 3;
+
+        await registerEmitterAndDomain(
+            circleIntegration,
+            payer,
+            govSequence++,
+            foreignChain,
+            foreignEmitter,
+            cctpDomain,
+        );
+    }
+    {
+        const foreignChain = "base_sepolia";
+        const foreignEmitter = "0x2703483B1a5a7c577e8680de9Df8Be03c6f30e3c";
+        const cctpDomain = 6;
+
+        await registerEmitterAndDomain(
+            circleIntegration,
+            payer,
+            govSequence++,
+            foreignChain,
+            foreignEmitter,
+            cctpDomain,
+        );
+    }
+    {
+        const foreignChain = "polygon";
+        const foreignEmitter = "0x2703483B1a5a7c577e8680de9Df8Be03c6f30e3c";
+        const cctpDomain = 7;
 
         await registerEmitterAndDomain(
             circleIntegration,

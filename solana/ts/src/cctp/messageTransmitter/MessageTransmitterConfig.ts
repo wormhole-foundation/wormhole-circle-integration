@@ -1,3 +1,4 @@
+import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 
 export class MessageTransmitterConfig {
@@ -9,10 +10,9 @@ export class MessageTransmitterConfig {
     localDomain: number;
     version: number;
     signatureThreshold: number;
-    enabledAttesters: Array<Array<number>>;
-    maxMessageBodySize: bigint;
-    nextAvailableNonce: bigint;
-    authorityBump: number;
+    enabledAttesters: Array<PublicKey>;
+    maxMessageBodySize: BN;
+    nextAvailableNonce: BN;
 
     constructor(
         owner: PublicKey,
@@ -23,10 +23,9 @@ export class MessageTransmitterConfig {
         localDomain: number,
         version: number,
         signatureThreshold: number,
-        enabledAttesters: Array<Array<number>>,
-        maxMessageBodySize: bigint,
-        nextAvailableNonce: bigint,
-        authorityBump: number,
+        enabledAttesters: Array<PublicKey>,
+        maxMessageBodySize: BN,
+        nextAvailableNonce: BN,
     ) {
         this.owner = owner;
         this.pendingOwner = pendingOwner;
@@ -39,7 +38,6 @@ export class MessageTransmitterConfig {
         this.enabledAttesters = enabledAttesters;
         this.maxMessageBodySize = maxMessageBodySize;
         this.nextAvailableNonce = nextAvailableNonce;
-        this.authorityBump = authorityBump;
     }
 
     static address(programId: PublicKey) {

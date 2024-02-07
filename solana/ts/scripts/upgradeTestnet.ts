@@ -6,7 +6,7 @@ import { Connection, Keypair, Transaction, sendAndConfirmTransaction } from "@so
 import "dotenv/config";
 import { CircleIntegrationProgram } from "../src";
 
-const PROGRAM_ID = "wCCTPvsyeL9qYqbHTv3DUAyzEfYcyHoYw5c4mgcbBeW";
+const PROGRAM_ID = "wcihrWf1s91vfukW7LW8ZvR1rzpeZ9BrtZ8oyPkWK5d";
 
 // Modify this to the new implementation address.
 const NEW_IMPLEMENTATION = "HCUGGoihMthPN6d4VGpH8xUPYUofgTgqnpYtwyca7PEh";

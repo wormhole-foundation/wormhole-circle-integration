@@ -1,3 +1,6 @@
+mod consumed_vaa;
+pub use consumed_vaa::*;
+
 mod custodian;
 pub use custodian::*;
 

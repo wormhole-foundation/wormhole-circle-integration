@@ -1,10 +1,12 @@
 use crate::{
     error::CircleIntegrationError,
-    state::{Custodian, RegisteredEmitter},
+    state::{ConsumedVaa, Custodian, RegisteredEmitter},
 };
 use anchor_lang::prelude::*;
 use wormhole_cctp_solana::{
-    cctp::token_messenger_minter_program, utils::ExternalAccount, wormhole::core_bridge_program,
+    cctp::token_messenger_minter_program,
+    utils::ExternalAccount,
+    wormhole::core_bridge_program::{self, VaaAccount},
 };
 use wormhole_raw_vaas::cctp::CircleIntegrationGovPayload;
 
@@ -20,16 +22,8 @@ pub struct RegisterEmitterAndDomain<'info> {
     custodian: Account<'info, Custodian>,
 
     /// CHECK: We will be performing zero-copy deserialization in the instruction handler.
-    #[account(
-        mut,
-        owner = core_bridge_program::id()
-    )]
+    #[account(owner = core_bridge_program::id())]
     vaa: AccountInfo<'info>,
-
-    /// CHECK: Account representing that a VAA has been consumed. Seeds are checked when
-    /// [claim_vaa](core_bridge::claim_vaa) is called.
-    #[account(mut)]
-    claim: AccountInfo<'info>,
 
     #[account(
         init,
@@ -42,6 +36,18 @@ pub struct RegisterEmitterAndDomain<'info> {
         bump,
     )]
     registered_emitter: Account<'info, RegisteredEmitter>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + ConsumedVaa::INIT_SPACE,
+        seeds = [
+            ConsumedVaa::SEED_PREFIX,
+            VaaAccount::load(&vaa)?.try_digest()?.as_ref(),
+        ],
+        bump,
+    )]
+    consumed_vaa: Account<'info, ConsumedVaa>,
 
     #[account(
         seeds = [
@@ -59,23 +65,11 @@ pub struct RegisterEmitterAndDomain<'info> {
 
 #[access_control(handle_access_control(&ctx))]
 pub fn register_emitter_and_domain(ctx: Context<RegisterEmitterAndDomain>) -> Result<()> {
-    let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa).unwrap();
+    ctx.accounts.consumed_vaa.set_inner(ConsumedVaa {
+        bump: ctx.bumps.consumed_vaa,
+    });
 
-    // Create the claim account to provide replay protection. Because this instruction creates this
-    // account every time it is executed, this account cannot be created again with this emitter
-    // address, chain and sequence combination.
-    core_bridge_program::sdk::claim_vaa(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            core_bridge_program::sdk::ClaimVaa {
-                claim: ctx.accounts.claim.to_account_info(),
-                payer: ctx.accounts.payer.to_account_info(),
-            },
-        ),
-        &crate::ID,
-        &vaa,
-        None,
-    )?;
+    let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa).unwrap();
 
     let registration = CircleIntegrationGovPayload::try_from(vaa.try_payload().unwrap())
         .unwrap()
@@ -85,7 +79,7 @@ pub fn register_emitter_and_domain(ctx: Context<RegisterEmitterAndDomain>) -> Re
     ctx.accounts
         .registered_emitter
         .set_inner(RegisteredEmitter {
-            bump: ctx.bumps["registered_emitter"],
+            bump: ctx.bumps.registered_emitter,
             cctp_domain: registration.cctp_domain(),
             chain: registration.foreign_chain(),
             address: registration.foreign_emitter(),

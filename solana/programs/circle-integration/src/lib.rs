@@ -8,7 +8,7 @@ cfg_if::cfg_if! {
         // Placeholder for real address
         declare_id!("Wormho1eCirc1e1ntegration111111111111111111");
     } else if #[cfg(feature = "testnet")] {
-        declare_id!("wCCTPvsyeL9qYqbHTv3DUAyzEfYcyHoYw5c4mgcbBeW");
+        declare_id!("wcihrWf1s91vfukW7LW8ZvR1rzpeZ9BrtZ8oyPkWK5d");
     }
 }
 

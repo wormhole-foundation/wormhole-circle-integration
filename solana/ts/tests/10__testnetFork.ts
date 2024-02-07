@@ -24,7 +24,7 @@ describe("Circle Integration -- Testnet Fork", () => {
 
     const circleIntegration = new CircleIntegrationProgram(
         connection,
-        "wCCTPvsyeL9qYqbHTv3DUAyzEfYcyHoYw5c4mgcbBeW",
+        "wcihrWf1s91vfukW7LW8ZvR1rzpeZ9BrtZ8oyPkWK5d",
     );
 
     describe("Upgrade Contract", () => {

@@ -13,7 +13,6 @@ pub struct MessageTransmitterConfig {
     pub enabled_attesters: Vec<[u8; 32]>,
     pub max_message_body_size: u64,
     pub next_available_nonce: u64,
-    pub authority_bump: u8,
 }
 
 impl anchor_lang::Discriminator for MessageTransmitterConfig {

@@ -8,6 +8,8 @@ pub mod cpi;
 
 pub mod error;
 
+pub use wormhole_io as io;
+
 pub mod messages;
 
 pub mod utils;

@@ -1,6 +1,8 @@
-use crate::{cctp::message_transmitter_program, error::WormholeCctpError, utils::CctpMessage};
+use crate::{
+    cctp::message_transmitter_program, error::WormholeCctpError, utils::CctpMessage,
+    wormhole::core_bridge_program::vaa::VaaAccount,
+};
 use anchor_lang::prelude::*;
-use wormhole_core_bridge_solana::sdk::VaaAccount;
 use wormhole_raw_vaas::cctp::WormholeCctpMessage;
 
 /// Method to reconcile a CCTP message with a Wormhole VAA encoding the Wormhole CCTP deposit. After
@@ -96,7 +98,7 @@ pub fn verify_vaa_and_mint<'ctx, 'info>(
     // Wormhole Core Bridge program. Otherwise, an attacker can create a fake VAA account.
     require_keys_eq!(
         *vaa.owner,
-        wormhole_core_bridge_solana::sdk::id(),
+        crate::wormhole::core_bridge_program::id(),
         ErrorCode::ConstraintOwner
     );
 

@@ -1,6 +1,8 @@
-use crate::wormhole::core_bridge_program::Commitment;
-use anchor_lang::{prelude::*, system_program};
-use wormhole_core_bridge_solana::state::Config;
+use crate::wormhole::core_bridge_program::{state::Config, Commitment};
+use anchor_lang::{
+    prelude::{borsh::BorshSerialize, *},
+    system_program,
+};
 
 #[derive(Accounts)]
 pub struct PostMessage<'info> {
@@ -68,11 +70,11 @@ pub fn post_message<'info>(
     const IX_SELECTOR: u8 = 1;
 
     solana_program::program::invoke_signed(
-        &solana_program::instruction::Instruction::new_with_borsh(
-            crate::wormhole::core_bridge_program::id(),
-            &(IX_SELECTOR, args),
-            ctx.to_account_metas(None),
-        ),
+        &solana_program::instruction::Instruction {
+            program_id: crate::wormhole::core_bridge_program::id(),
+            accounts: ctx.to_account_metas(None),
+            data: (IX_SELECTOR, args).try_to_vec()?,
+        },
         &ctx.to_account_infos(),
         ctx.signer_seeds,
     )

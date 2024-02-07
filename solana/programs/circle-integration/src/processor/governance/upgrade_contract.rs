@@ -1,7 +1,11 @@
-use crate::{constants::UPGRADE_SEED_PREFIX, error::CircleIntegrationError, state::Custodian};
+use crate::{
+    constants::UPGRADE_SEED_PREFIX,
+    error::CircleIntegrationError,
+    state::{ConsumedVaa, Custodian},
+};
 use anchor_lang::prelude::*;
 use solana_program::bpf_loader_upgradeable;
-use wormhole_cctp_solana::wormhole::core_bridge_program;
+use wormhole_cctp_solana::wormhole::core_bridge_program::{self, VaaAccount};
 
 #[derive(Accounts)]
 pub struct UpgradeContract<'info> {
@@ -17,16 +21,20 @@ pub struct UpgradeContract<'info> {
     /// CHECK: Posted VAA account, which will be read via zero-copy deserialization in the
     /// instruction handler, which also checks this account discriminator (so there is no need to
     /// check PDA seeds here).
-    #[account(
-        mut,
-        owner = core_bridge_program::id()
-    )]
+    #[account(owner = core_bridge_program::id())]
     vaa: AccountInfo<'info>,
 
-    /// CHECK: Account representing that a VAA has been consumed. Seeds are checked when
-    /// [claim_vaa](core_bridge_sdk::claim_vaa) is called.
-    #[account(mut)]
-    claim: AccountInfo<'info>,
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + ConsumedVaa::INIT_SPACE,
+        seeds = [
+            ConsumedVaa::SEED_PREFIX,
+            VaaAccount::load(&vaa)?.try_digest()?.as_ref(),
+        ],
+        bump,
+    )]
+    consumed_vaa: Account<'info, ConsumedVaa>,
 
     /// CHECK: We need this upgrade authority to invoke the BPF Loader Upgradeable program to
     /// upgrade this program's executable. We verify this PDA address here out of convenience to get
@@ -81,23 +89,9 @@ pub struct UpgradeContract<'info> {
 /// Loader Upgradeable program to upgrade this program's executable to the provided buffer.
 #[access_control(handle_access_control(&ctx))]
 pub fn upgrade_contract(ctx: Context<UpgradeContract>) -> Result<()> {
-    let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa).unwrap();
-
-    // Create the claim account to provide replay protection. Because this instruction creates this
-    // account every time it is executed, this account cannot be created again with this emitter
-    // address, chain and sequence combination.
-    core_bridge_program::sdk::claim_vaa(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            core_bridge_program::sdk::ClaimVaa {
-                claim: ctx.accounts.claim.to_account_info(),
-                payer: ctx.accounts.payer.to_account_info(),
-            },
-        ),
-        &crate::ID,
-        &vaa,
-        None,
-    )?;
+    ctx.accounts.consumed_vaa.set_inner(ConsumedVaa {
+        bump: ctx.bumps.consumed_vaa,
+    });
 
     // Finally upgrade.
     solana_program::program::invoke_signed(
@@ -117,7 +111,9 @@ pub fn upgrade_contract(ctx: Context<UpgradeContract>) -> Result<()> {
 }
 
 fn handle_access_control(ctx: &Context<UpgradeContract>) -> Result<()> {
+    msg!("okay... {:?}", ctx.accounts.vaa.key());
     let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa)?;
+    msg!("and...");
     let gov_payload = crate::processor::require_valid_governance_vaa(&vaa)?;
 
     let upgrade = gov_payload

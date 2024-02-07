@@ -4,10 +4,7 @@ use anchor_spl::token;
 use wormhole_cctp_solana::{
     cctp::{message_transmitter_program, token_messenger_minter_program},
     utils::ExternalAccount,
-    wormhole::core_bridge_program::{
-        self,
-        sdk::io::{Readable, TypePrefixedPayload, Writeable},
-    },
+    wormhole::core_bridge_program,
 };
 
 /// Account context to invoke [transfer_tokens_with_payload].
@@ -82,6 +79,10 @@ pub struct TransferTokensWithPayload<'info> {
     #[account(mut)]
     core_message: Signer<'info>,
 
+    /// CHECK: Mutable signer to create CCTP message.
+    #[account(mut)]
+    cctp_message: Signer<'info>,
+
     /// CHECK: Seeds must be \["Sequence"\, custodian] (Wormhole Core Bridge program).
     #[account(mut)]
     core_emitter_sequence: UncheckedAccount<'info>,
@@ -104,7 +105,7 @@ pub struct TransferTokensWithPayload<'info> {
     /// Messenger Minter program).
     remote_token_messenger: UncheckedAccount<'info>,
 
-    /// CHECK Seeds must be \["token_minter"\] (CCTP Token Messenger Minter program).
+    /// CHECK: Seeds must be \["token_minter"\] (CCTP Token Messenger Minter program).
     token_minter: UncheckedAccount<'info>,
 
     /// Local token account, which this program uses to validate the `mint` used to burn.
@@ -112,6 +113,9 @@ pub struct TransferTokensWithPayload<'info> {
     /// Mutable. Seeds must be \["local_token", mint\] (CCTP Token Messenger Minter program).
     #[account(mut)]
     local_token: Box<Account<'info, ExternalAccount<token_messenger_minter_program::LocalToken>>>,
+
+    /// CHECK: Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter program).
+    token_messenger_minter_event_authority: UncheckedAccount<'info>,
 
     core_bridge_program: Program<'info, core_bridge_program::CoreBridge>,
     token_messenger_minter_program:
@@ -145,39 +149,6 @@ pub struct TransferTokensWithPayloadArgs {
     /// Arbitrary payload, which can be used to encode instructions or data for another network's
     /// smart contract.
     pub payload: Vec<u8>,
-}
-
-#[derive(Debug, Clone)]
-pub struct WrappedVec(Vec<u8>);
-
-impl Readable for WrappedVec {
-    const SIZE: Option<usize> = None;
-
-    fn read<R>(reader: &mut R) -> std::io::Result<Self>
-    where
-        R: std::io::Read,
-    {
-        let mut out = vec![];
-        reader.read_to_end(&mut out)?;
-        Ok(Self(out))
-    }
-}
-
-impl Writeable for WrappedVec {
-    fn written_size(&self) -> usize {
-        self.0.len()
-    }
-
-    fn write<W>(&self, writer: &mut W) -> std::io::Result<()>
-    where
-        W: std::io::Write,
-    {
-        writer.write_all(&self.0)
-    }
-}
-
-impl TypePrefixedPayload for WrappedVec {
-    const TYPE: Option<u8> = None;
 }
 
 /// This instruction invokes both Wormhole Core Bridge and CCTP Token Messenger Minter programs to
@@ -218,12 +189,13 @@ pub fn transfer_tokens_with_payload(
                 .token_messenger_minter_program
                 .to_account_info(),
             wormhole_cctp_solana::cpi::DepositForBurnWithCaller {
-                src_token_owner: ctx.accounts.custodian.to_account_info(),
+                burn_token_owner: ctx.accounts.custodian.to_account_info(),
+                payer: ctx.accounts.payer.to_account_info(),
                 token_messenger_minter_sender_authority: ctx
                     .accounts
                     .token_messenger_minter_sender_authority
                     .to_account_info(),
-                src_token: ctx.accounts.custody_token.to_account_info(),
+                burn_token: ctx.accounts.custody_token.to_account_info(),
                 message_transmitter_config: ctx
                     .accounts
                     .message_transmitter_config
@@ -233,6 +205,7 @@ pub fn transfer_tokens_with_payload(
                 token_minter: ctx.accounts.token_minter.to_account_info(),
                 local_token: ctx.accounts.local_token.to_account_info(),
                 mint: ctx.accounts.mint.to_account_info(),
+                cctp_message: ctx.accounts.cctp_message.to_account_info(),
                 message_transmitter_program: ctx
                     .accounts
                     .message_transmitter_program
@@ -242,6 +215,11 @@ pub fn transfer_tokens_with_payload(
                     .token_messenger_minter_program
                     .to_account_info(),
                 token_program: ctx.accounts.token_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                event_authority: ctx
+                    .accounts
+                    .token_messenger_minter_event_authority
+                    .to_account_info(),
             },
             &[custodian_seeds],
         ),
@@ -267,7 +245,7 @@ pub fn transfer_tokens_with_payload(
             amount,
             mint_recipient,
             wormhole_message_nonce,
-            payload: WrappedVec(payload),
+            payload,
         },
     )?;
 

@@ -12,14 +12,13 @@ repository.workspace = true
 crate-type = ["cdylib", "lib"]
 
 [features]
-default = ["cpi", "mainnet"]
+default = ["cpi"]
 client = []
-cpi = ["wormhole-core-bridge-solana/cpi", "dep:anchor-spl", "dep:solana-program"]
-mainnet = ["wormhole-core-bridge-solana/mainnet"]
-testnet = ["wormhole-core-bridge-solana/testnet"]
+cpi = ["dep:anchor-spl", "dep:solana-program"]
+mainnet = []
+testnet = []
 
 [dependencies]
-wormhole-core-bridge-solana.workspace = true
 wormhole-io.workspace = true
 wormhole-raw-vaas.workspace = true
 

@@ -1,5 +1,6 @@
 import { parseVaa } from "@certusone/wormhole-sdk";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { ethers } from "ethers";
 
 export type EncodedVaa = {
     status: number;
@@ -31,26 +32,43 @@ export class VaaAccount {
     private _postedVaaV1?: PostedVaaV1;
 
     static async fetch(connection: Connection, addr: PublicKey): Promise<VaaAccount> {
-        const data = await connection.getAccountInfo(addr).then((acct) => acct.data);
-        if (data.subarray(0, 8).equals(Uint8Array.from([226, 101, 163, 4, 133, 160, 84, 245]))) {
-            const status = data[8];
-            const writeAuthority = new PublicKey(data.subarray(9, 41));
-            const version = data[41];
-            const bufLen = data.readUInt32LE(42);
-            const buf = data.subarray(46, 46 + bufLen);
+        const accInfo = await connection.getAccountInfo(addr);
+        if (accInfo === null) {
+            throw new Error("no VAA account info found");
+        }
+        const { data } = accInfo;
+
+        let offset = 0;
+        const disc = data.subarray(offset, (offset += 8));
+        if (disc.equals(Uint8Array.from([226, 101, 163, 4, 133, 160, 84, 245]))) {
+            const status = data[offset];
+            offset += 1;
+            const writeAuthority = new PublicKey(data.subarray(offset, (offset += 32)));
+            const version = data[offset];
+            offset += 1;
+            const bufLen = data.readUInt32LE(offset);
+            offset += 4;
+            const buf = data.subarray(offset, (offset += bufLen));
 
             return new VaaAccount({ encodedVaa: { status, writeAuthority, version, buf } });
-        } else if (data.subarray(0, 4).equals(Uint8Array.from([118, 97, 97, 1]))) {
-            const consistencyLevel = data[4];
-            const timestamp = data.readUInt32LE(5);
-            const signatureSet = new PublicKey(data.subarray(9, 41));
-            const guardianSetIndex = data.readUInt32LE(41);
-            const nonce = data.readUInt32LE(45);
-            const sequence = data.readBigUInt64LE(49);
-            const emitterChain = data.readUInt16LE(57);
-            const emitterAddress = Array.from(data.subarray(59, 91));
-            const payloadLen = data.readUInt32LE(91);
-            const payload = data.subarray(95, 95 + payloadLen);
+        } else if (disc.subarray(0, (offset -= 4)).equals(Uint8Array.from([118, 97, 97, 1]))) {
+            const consistencyLevel = data[offset];
+            offset += 1;
+            const timestamp = data.readUInt32LE(offset);
+            offset += 4;
+            const signatureSet = new PublicKey(data.subarray(offset, (offset += 32)));
+            const guardianSetIndex = data.readUInt32LE(offset);
+            offset += 4;
+            const nonce = data.readUInt32LE(offset);
+            offset += 4;
+            const sequence = data.readBigUInt64LE(offset);
+            offset += 8;
+            const emitterChain = data.readUInt16LE(offset);
+            offset += 2;
+            const emitterAddress = Array.from(data.subarray(offset, (offset += 32)));
+            const payloadLen = data.readUInt32LE(offset);
+            offset += 4;
+            const payload = data.subarray(offset, (offset += payloadLen));
 
             return new VaaAccount({
                 postedVaaV1: {
@@ -78,21 +96,58 @@ export class VaaAccount {
                 address: Array.from(parsed.emitterAddress),
                 sequence: parsed.sequence,
             };
-        } else {
+        } else if (this._postedVaaV1 !== undefined) {
             const { emitterChain: chain, emitterAddress: address, sequence } = this._postedVaaV1;
             return {
                 chain,
                 address,
                 sequence,
             };
+        } else {
+            throw new Error("impossible: emitterInfo() failed");
         }
     }
 
     payload(): Buffer {
         if (this._encodedVaa !== undefined) {
             return parseVaa(this._encodedVaa.buf).payload;
-        } else {
+        } else if (this._postedVaaV1 !== undefined) {
             return this._postedVaaV1.payload;
+        } else {
+            throw new Error("impossible: payload() failed");
+        }
+    }
+
+    digest(): Uint8Array {
+        if (this._encodedVaa !== undefined) {
+            return ethers.utils.arrayify(
+                ethers.utils.keccak256(parseVaa(this._encodedVaa.buf).hash),
+            );
+        } else if (this._postedVaaV1 !== undefined) {
+            const {
+                consistencyLevel,
+                timestamp,
+                nonce,
+                sequence,
+                emitterChain,
+                emitterAddress,
+                payload,
+            } = this._postedVaaV1;
+
+            let offset = 0;
+            const buf = Buffer.alloc(51 + payload.length);
+            offset = buf.writeUInt32BE(timestamp, offset);
+            offset = buf.writeUInt32BE(nonce, offset);
+            offset = buf.writeUInt16BE(emitterChain, offset);
+            buf.set(emitterAddress, offset);
+            offset += 32;
+            offset = buf.writeBigUInt64BE(sequence, offset);
+            offset = buf.writeUInt8(consistencyLevel, offset);
+            buf.set(payload, offset);
+
+            return ethers.utils.arrayify(ethers.utils.keccak256(ethers.utils.keccak256(buf)));
+        } else {
+            throw new Error("impossible: digest() failed");
         }
     }
 
@@ -118,33 +173,5 @@ export class VaaAccount {
 
         this._encodedVaa = encodedVaa;
         this._postedVaaV1 = postedVaaV1;
-    }
-}
-
-export class Claim {
-    static address(
-        programId: PublicKey,
-        address: Array<number>,
-        chain: number,
-        sequence: bigint,
-        prefix?: Buffer,
-    ): PublicKey {
-        const chainBuf = Buffer.alloc(2);
-        chainBuf.writeUInt16BE(chain);
-
-        const sequenceBuf = Buffer.alloc(8);
-        sequenceBuf.writeBigUInt64BE(sequence);
-
-        if (prefix !== undefined) {
-            return PublicKey.findProgramAddressSync(
-                [prefix, Buffer.from(address), chainBuf, sequenceBuf],
-                new PublicKey(programId),
-            )[0];
-        } else {
-            return PublicKey.findProgramAddressSync(
-                [Buffer.from(address), chainBuf, sequenceBuf],
-                new PublicKey(programId),
-            )[0];
-        }
     }
 }

@@ -6,11 +6,10 @@ import * as splToken from "@solana/spl-token";
 import { expect } from "chai";
 import {
     CctpTokenBurnMessage,
+    CircleIntegrationProgram,
     Deposit,
     DepositHeader,
-    CircleIntegrationProgram,
     VaaAccount,
-    Claim,
 } from "../src";
 import {
     CircleAttester,
@@ -269,13 +268,15 @@ describe("Circle Integration -- Localnet", () => {
             const wormholeMessageNonce = 420;
             const inputPayload = Buffer.from("All your base are belong to us.");
 
-            const message = anchor.web3.Keypair.generate();
+            const coreMessage = anchor.web3.Keypair.generate();
+            const cctpMessage = anchor.web3.Keypair.generate();
             const ix = await circleIntegration.transferTokensWithPayloadIx(
                 {
                     payer: payer.publicKey,
                     mint: USDC_MINT_ADDRESS,
                     burnSource: payerToken,
-                    coreMessage: message.publicKey,
+                    coreMessage: coreMessage.publicKey,
+                    cctpMessage: cctpMessage.publicKey,
                 },
                 {
                     amount: 0n,
@@ -301,7 +302,7 @@ describe("Circle Integration -- Localnet", () => {
             await expectIxErr(
                 connection,
                 [approveIx, ix],
-                [payer, message],
+                [payer, coreMessage, cctpMessage],
                 "Error Code: InvalidAmount",
                 {
                     addressLookupTableAccounts: [lookupTableAccount],
@@ -320,13 +321,15 @@ describe("Circle Integration -- Localnet", () => {
             const wormholeMessageNonce = 420;
             const inputPayload = Buffer.from("All your base are belong to us.");
 
-            const message = anchor.web3.Keypair.generate();
+            const coreMessage = anchor.web3.Keypair.generate();
+            const cctpMessage = anchor.web3.Keypair.generate();
             const ix = await circleIntegration.transferTokensWithPayloadIx(
                 {
                     payer: payer.publicKey,
                     mint: USDC_MINT_ADDRESS,
                     burnSource: payerToken,
-                    coreMessage: message.publicKey,
+                    coreMessage: coreMessage.publicKey,
+                    cctpMessage: cctpMessage.publicKey,
                 },
                 {
                     amount,
@@ -352,7 +355,7 @@ describe("Circle Integration -- Localnet", () => {
             await expectIxErr(
                 connection,
                 [approveIx, ix],
-                [payer, message],
+                [payer, coreMessage, cctpMessage],
                 "Error Code: InvalidMintRecipient",
                 {
                     addressLookupTableAccounts: [lookupTableAccount],
@@ -372,13 +375,15 @@ describe("Circle Integration -- Localnet", () => {
             const wormholeMessageNonce = 420;
             const inputPayload = Buffer.from("All your base are belong to us.");
 
-            const message = anchor.web3.Keypair.generate();
+            const coreMessage = anchor.web3.Keypair.generate();
+            const cctpMessage = anchor.web3.Keypair.generate();
             const ix = await circleIntegration.transferTokensWithPayloadIx(
                 {
                     payer: payer.publicKey,
                     mint: USDC_MINT_ADDRESS,
                     burnSource: payerToken,
-                    coreMessage: message.publicKey,
+                    coreMessage: coreMessage.publicKey,
+                    cctpMessage: cctpMessage.publicKey,
                 },
                 {
                     amount,
@@ -394,9 +399,15 @@ describe("Circle Integration -- Localnet", () => {
                 .then((resp) => resp.value);
 
             // NOTE: This is an SPL Token program error.
-            await expectIxErr(connection, [ix], [payer, message], "Error: owner does not match", {
-                addressLookupTableAccounts: [lookupTableAccount],
-            });
+            await expectIxErr(
+                connection,
+                [ix],
+                [payer, coreMessage, cctpMessage],
+                "Error: owner does not match",
+                {
+                    addressLookupTableAccounts: [lookupTableAccount],
+                },
+            );
         });
 
         it("Invoke `transfer_tokens_with_payload`", async () => {
@@ -411,13 +422,15 @@ describe("Circle Integration -- Localnet", () => {
             const wormholeMessageNonce = 420;
             const inputPayload = Buffer.from("All your base are belong to us.");
 
-            const message = anchor.web3.Keypair.generate();
+            const coreMessage = anchor.web3.Keypair.generate();
+            const cctpMessage = anchor.web3.Keypair.generate();
             const ix = await circleIntegration.transferTokensWithPayloadIx(
                 {
                     payer: payer.publicKey,
                     mint: USDC_MINT_ADDRESS,
                     burnSource: payerToken,
-                    coreMessage: message.publicKey,
+                    coreMessage: coreMessage.publicKey,
+                    cctpMessage: cctpMessage.publicKey,
                 },
                 {
                     amount,
@@ -445,7 +458,7 @@ describe("Circle Integration -- Localnet", () => {
             const txReceipt = await expectIxOkDetails(
                 connection,
                 [approveIx, ix],
-                [payer, message],
+                [payer, coreMessage, cctpMessage],
                 {
                     addressLookupTableAccounts: [lookupTableAccount],
                 },
@@ -458,19 +471,15 @@ describe("Circle Integration -- Localnet", () => {
             expect(balanceAfter + amount).to.equal(balanceBefore);
 
             // Check messages.
-            const posted = await getPostedMessage(connection, message.publicKey);
+            const posted = await getPostedMessage(connection, coreMessage.publicKey);
             const { deposit, payload } = Deposit.decode(posted.message.payload);
             expect(payload).to.eql(inputPayload);
 
-            const parsedTxData = await circleIntegration.parseTransactionReceipt(txReceipt, [
-                lookupTableAccount,
-            ]);
-            expect(parsedTxData).has.length(1);
+            const { message: encodedCctpMessage } = await circleIntegration
+                .messageTransmitterProgram()
+                .fetchMessageSent(cctpMessage.publicKey);
 
-            const txData = parsedTxData[0];
-            expect(txData.coreMessageAccount).is.eql(message.publicKey);
-
-            const burnMessage = CctpTokenBurnMessage.decode(txData.encodedCctpMessage);
+            const burnMessage = CctpTokenBurnMessage.decode(encodedCctpMessage);
             expect(burnMessage.sender).to.eql(
                 Array.from(circleIntegration.custodianAddress().toBuffer()),
             );
@@ -562,7 +571,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -583,7 +592,7 @@ describe("Circle Integration -- Localnet", () => {
                 connection,
                 [computeIx, ix],
                 [payer, mintRecipientAuthority],
-                "ConstraintOwner",
+                "Error Code: AccountDidNotDeserialize",
                 {
                     addressLookupTableAccounts: [lookupTableAccount],
                 },
@@ -643,7 +652,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -721,7 +730,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -797,7 +806,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -872,7 +881,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -946,7 +955,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -1020,7 +1029,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -1094,7 +1103,7 @@ describe("Circle Integration -- Localnet", () => {
             );
 
             const computeIx = anchor.web3.ComputeBudgetProgram.setComputeUnitLimit({
-                units: 250_000,
+                units: 300_000,
             });
             const ix = await circleIntegration.redeemTokensWithPayloadIx(
                 {
@@ -1150,12 +1159,20 @@ describe("Circle Integration -- Localnet", () => {
                 { encodedCctpMessage, cctpAttestation },
             );
 
-            // NOTE: This is a CCTP Message Transmitter program error.
+            const vaaHash = await VaaAccount.fetch(connection, vaa).then((vaa) => vaa.digest());
+            const consumedVaa = circleIntegration.consumedVaaAddress(vaaHash);
+
+            const lookupTableAccount = await connection
+                .getAddressLookupTable(lookupTableAddress)
+                .then((resp) => resp.value);
             await expectIxErr(
                 connection,
                 [ix],
                 [payer, mintRecipientAuthority],
-                "Error Code: NonceAlreadyUsed",
+                `Allocate: account Address { address: ${consumedVaa.toString()}, base: None } already in use`,
+                {
+                    addressLookupTableAccounts: [lookupTableAccount],
+                },
             );
         });
     });

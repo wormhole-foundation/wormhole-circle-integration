@@ -1,6 +1,6 @@
 use crate::{
     error::CircleIntegrationError,
-    state::{Custodian, RegisteredEmitter},
+    state::{ConsumedVaa, Custodian, RegisteredEmitter},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token;
@@ -8,7 +8,7 @@ use wormhole_cctp_solana::{
     cctp::{message_transmitter_program, token_messenger_minter_program},
     cpi::ReceiveMessageArgs,
     utils::ExternalAccount,
-    wormhole::core_bridge_program,
+    wormhole::core_bridge_program::VaaAccount,
 };
 
 /// Account context to invoke [redeem_tokens_with_payload].
@@ -37,8 +37,22 @@ pub struct RedeemTokensWithPayload<'info> {
     ///
     /// CHECK: Seeds must be [emitter_address, emitter_chain, sequence]. These seeds are checked
     /// when [claim_vaa](core_bridge_program::sdk::claim_vaa) is called.
-    #[account(mut)]
-    claim: AccountInfo<'info>,
+    ///
+    // NOTE: Because the message is already received at this point, this claim account may not be
+    // needed because there should be a "Nonce already used" error already thrown by this point. But
+    // this will remain here as an extra layer of protection (and will be consistent with the way
+    // the EVM implementation is written).
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + ConsumedVaa::INIT_SPACE,
+        seeds = [
+            ConsumedVaa::SEED_PREFIX,
+            VaaAccount::load(&vaa)?.try_digest()?.as_ref(),
+        ],
+        bump,
+    )]
+    consumed_vaa: Account<'info, ConsumedVaa>,
 
     /// Redeemer, who owns the token account that will receive the minted tokens.
     ///
@@ -73,12 +87,15 @@ pub struct RedeemTokensWithPayload<'info> {
     message_transmitter_authority: UncheckedAccount<'info>,
 
     /// CHECK: Seeds must be \["message_transmitter"\] (CCTP Message Transmitter program).
-    message_transmitter_config: AccountInfo<'info>,
+    message_transmitter_config: UncheckedAccount<'info>,
 
     /// CHECK: Mutable. Seeds must be \["used_nonces", remote_domain.to_string(),
     /// first_nonce.to_string()\] (CCTP Message Transmitter program).
     #[account(mut)]
     used_nonces: UncheckedAccount<'info>,
+
+    /// CHECK: Seeds must be \["__event_authority"\] (CCTP Message Transmitter program).
+    message_transmitter_event_authority: UncheckedAccount<'info>,
 
     /// CHECK: Seeds must be \["token_messenger"\] (CCTP Token Messenger Minter program).
     token_messenger: UncheckedAccount<'info>,
@@ -107,11 +124,14 @@ pub struct RedeemTokensWithPayload<'info> {
 
     /// CHECK: Seeds must be \["token_pair", remote_domain.to_string(), remote_token_address\] (CCTP
     /// Token Messenger Minter program).
-    token_pair: AccountInfo<'info>,
+    token_pair: UncheckedAccount<'info>,
 
     /// CHECK: Mutable. Seeds must be \["custody", mint\] (CCTP Token Messenger Minter program).
     #[account(mut)]
-    token_messenger_minter_custody_token: AccountInfo<'info>,
+    token_messenger_minter_custody_token: UncheckedAccount<'info>,
+
+    /// CHECK: Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter program).
+    token_messenger_minter_event_authority: UncheckedAccount<'info>,
 
     token_messenger_minter_program:
         Program<'info, token_messenger_minter_program::TokenMessengerMinter>,
@@ -138,6 +158,10 @@ pub fn redeem_tokens_with_payload(
     ctx: Context<RedeemTokensWithPayload>,
     args: RedeemTokensWithPayloadArgs,
 ) -> Result<()> {
+    ctx.accounts.consumed_vaa.set_inner(ConsumedVaa {
+        bump: ctx.bumps.consumed_vaa,
+    });
+
     let vaa = wormhole_cctp_solana::cpi::verify_vaa_and_mint(
         &ctx.accounts.vaa,
         CpiContext::new_with_signer(
@@ -159,6 +183,14 @@ pub fn redeem_tokens_with_payload(
                     .token_messenger_minter_program
                     .to_account_info(),
                 system_program: ctx.accounts.system_program.to_account_info(),
+                message_transmitter_event_authority: ctx
+                    .accounts
+                    .message_transmitter_event_authority
+                    .to_account_info(),
+                message_transmitter_program: ctx
+                    .accounts
+                    .message_transmitter_program
+                    .to_account_info(),
                 token_messenger: ctx.accounts.token_messenger.to_account_info(),
                 remote_token_messenger: ctx.accounts.remote_token_messenger.to_account_info(),
                 token_minter: ctx.accounts.token_minter.to_account_info(),
@@ -170,6 +202,10 @@ pub fn redeem_tokens_with_payload(
                     .token_messenger_minter_custody_token
                     .to_account_info(),
                 token_program: ctx.accounts.token_program.to_account_info(),
+                token_messenger_minter_event_authority: ctx
+                    .accounts
+                    .token_messenger_minter_event_authority
+                    .to_account_info(),
             },
             &[&[Custodian::SEED_PREFIX, &[ctx.accounts.custodian.bump]]],
         ),
@@ -177,27 +213,6 @@ pub fn redeem_tokens_with_payload(
             encoded_message: args.encoded_cctp_message,
             attestation: args.cctp_attestation,
         },
-    )?;
-
-    // Create the claim account to provide replay protection. Because this instruction creates this
-    // account every time it is executed, this account cannot be created again with this emitter
-    // address, chain and sequence combination.
-    //
-    // NOTE: Because the message is already received at this point, this claim account may not be
-    // needed because there should be a "Nonce already used" error already thrown by this point. But
-    // this will remain here as an extra layer of protection (and will be consistent with the way
-    // the EVM implementation is written).
-    core_bridge_program::sdk::claim_vaa(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            core_bridge_program::sdk::ClaimVaa {
-                claim: ctx.accounts.claim.to_account_info(),
-                payer: ctx.accounts.payer.to_account_info(),
-            },
-        ),
-        &crate::ID,
-        &vaa,
-        None,
     )?;
 
     // Validate that this message originated from a registered emitter.
