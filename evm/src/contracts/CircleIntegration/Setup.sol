@@ -2,9 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {ERC1967Upgrade} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
-contract Setup is ERC1967Upgrade, Context {
+contract Setup is ERC1967Upgrade {
     function setup(address implementation) public {
         require(implementation != address(0), "invalid implementation");
 
