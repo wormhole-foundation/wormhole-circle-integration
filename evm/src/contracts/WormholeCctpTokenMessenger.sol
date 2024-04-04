@@ -94,7 +94,7 @@ abstract contract WormholeCctpTokenMessenger {
      *  who will ultimately be burning the tokens.
      */
     function setTokenMessengerApproval(address token, uint256 amount) internal {
-        IERC20(token).approve(address(_tokenMessenger), amount);
+        IERC20(token).safeIncreaseAllowance(address(_tokenMessenger), amount);
     }
 
     /**
