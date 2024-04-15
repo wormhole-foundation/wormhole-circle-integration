@@ -5,6 +5,9 @@
 
 #[anchor_lang::error_code(offset = 0)]
 pub enum WormholeCctpError {
+    #[msg("Invalid VAA account")]
+    InvalidVaa = 0xffff0000,
+
     #[msg("Cannot parse VAA payload as Wormhole CCTP message")]
     CannotParseMessage = 0xffff0001,
 
@@ -25,4 +28,7 @@ pub enum WormholeCctpError {
 
     #[msg("Encoded mint recipient does not match mint recipient token account")]
     InvalidMintRecipient = 0xffff0014,
+
+    #[msg("Deposit message exceeds u16::MAX")]
+    DepositMessageTooLarge = 0xffff0080,
 }

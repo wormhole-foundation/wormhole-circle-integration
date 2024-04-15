@@ -12,7 +12,7 @@ repository.workspace = true
 crate-type = ["cdylib", "lib"]
 
 [features]
-default = ["mainnet", "no-idl", "cpi"]
+default = ["no-idl"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
@@ -20,6 +20,7 @@ cpi = ["no-entrypoint"]
 testnet = ["wormhole-cctp-solana/testnet"]
 mainnet = ["wormhole-cctp-solana/mainnet"]
 integration-test = ["mainnet"]
+idl-build = ["testnet", "anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 wormhole-cctp-solana = { workspace = true, features = ["cpi"] }

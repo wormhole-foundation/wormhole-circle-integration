@@ -110,6 +110,7 @@ pub fn upgrade_contract(ctx: Context<UpgradeContract>) -> Result<()> {
 }
 
 fn handle_access_control(ctx: &Context<UpgradeContract>) -> Result<()> {
+    msg!("wtf");
     msg!("okay... {:?}", ctx.accounts.vaa.key());
     let vaa = VaaAccount::load(&ctx.accounts.vaa)?;
     msg!("and...");

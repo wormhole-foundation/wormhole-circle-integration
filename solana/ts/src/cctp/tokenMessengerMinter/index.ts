@@ -1,5 +1,5 @@
-import { Program } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { Program } from "anchor-0.29.0";
 import { MessageTransmitterProgram } from "../messageTransmitter";
 import { IDL, TokenMessengerMinter } from "../types/token_messenger_minter";
 import { RemoteTokenMessenger } from "./RemoteTokenMessenger";

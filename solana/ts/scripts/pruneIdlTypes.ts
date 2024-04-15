@@ -3,27 +3,31 @@ import * as fs from "fs";
 const BASENAME = "wormhole_circle_integration_solana";
 
 const ROOT = `${__dirname}/../..`;
+const IDL = `${ROOT}/target/idl/${BASENAME}.json`;
 const TYPES = `${ROOT}/target/types/${BASENAME}.ts`;
 
 const IGNORE_TYPES = [
-    '"name": "LocalToken"',
-    '"name": "TokenPair"',
-    '"name": "MessageTransmitterConfig"',
-    '"name": "WormholeCctp"',
+    // '"name": "LocalToken"',
+    // '"name": "TokenPair"',
+    // '"name": "MessageTransmitterConfig"',
+    // '"name": "WormholeCctp"',
+    //'"name": "ExternalAccount"',
 ];
 
 main();
 
 function main() {
-    if (!fs.existsSync(TYPES)) {
-        throw new Error("Types non-existent");
-    }
+    for (const fn of [IDL, TYPES]) {
+        if (!fs.existsSync(fn)) {
+            throw new Error(`${fn} non-existent`);
+        }
 
-    const types = fs.readFileSync(TYPES, "utf8").split("\n");
-    for (const matchStr of IGNORE_TYPES) {
-        while (spliceType(types, matchStr));
+        const types = fs.readFileSync(fn, "utf8").split("\n");
+        for (const matchStr of IGNORE_TYPES) {
+            while (spliceType(types, matchStr));
+        }
+        fs.writeFileSync(fn, types.join("\n"), "utf8");
     }
-    fs.writeFileSync(TYPES, types.join("\n"), "utf8");
 }
 
 function spliceType(lines: string[], matchStr: string) {

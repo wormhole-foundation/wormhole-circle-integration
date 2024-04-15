@@ -10,12 +10,8 @@ impl RemoteTokenMessenger {
     pub const SEED_PREFIX: &'static [u8] = b"remote_token_messenger";
 }
 
-impl anchor_lang::Discriminator for RemoteTokenMessenger {
-    const DISCRIMINATOR: [u8; 8] = [105, 115, 174, 34, 95, 233, 138, 252];
-}
-
-impl Owner for RemoteTokenMessenger {
-    fn owner() -> Pubkey {
-        crate::cctp::token_messenger_minter_program::ID
-    }
-}
+wormhole_solana_utils::impl_anchor_account_readonly!(
+    RemoteTokenMessenger,
+    crate::cctp::TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+    [105, 115, 174, 34, 95, 233, 138, 252]
+);

@@ -7,7 +7,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.1.0-alpha.8"
+version = "0.3.0-alpha.0"
 authors = ["Wormhole Contributors"]
 license = "Apache-2.0"
 homepage = "https://wormhole.com"
@@ -15,22 +15,23 @@ repository = "https://github.com/wormhole-foundation/wormhole-circle-integration
 
 [workspace.dependencies.wormhole-cctp-solana]
 path = "modules/wormhole-cctp"
-default-features = false
 
 [workspace.dependencies.wormhole-raw-vaas]
-version = "0.2.0-alpha.2"
+version = "0.3.0-alpha.0"
 
 [workspace.dependencies.wormhole-solana-vaas]
-version = "0.2.0-alpha.16"
+version = "0.3.0-alpha.0"
 features = ["anchor"]
 
 [workspace.dependencies.anchor-lang]
-version = ">=0.29.0,<0.31.0"
+version = ">=0.29.0"
 features = ["derive", "init-if-needed"]
 
 [workspace.dependencies]
-wormhole-io = "0.1.3"
-anchor-spl = ">=0.29.0,<0.31.0"
+wormhole-solana-consts = "0.3.0-alpha.0"
+wormhole-solana-utils = "0.3.0-alpha.0"
+wormhole-io = "0.3.0-alpha.0"
+anchor-spl = ">=0.29.0"
 solana-program = "1.17.20"
 hex = "0.4.3"
 ruint = "1.9.0"

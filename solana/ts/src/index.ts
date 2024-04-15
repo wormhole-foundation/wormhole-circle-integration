@@ -14,10 +14,8 @@ import {
     SystemProgram,
     TransactionInstruction,
 } from "@solana/web3.js";
-import {
-    IDL,
-    WormholeCircleIntegrationSolana,
-} from "../../target/types/wormhole_circle_integration_solana";
+import { WormholeCircleIntegrationSolana } from "../../target/types/wormhole_circle_integration_solana";
+import * as IDL from "../../target/idl/wormhole_circle_integration_solana.json";
 import {
     CctpTokenBurnMessage,
     MessageTransmitterProgram,
@@ -118,9 +116,12 @@ export class CircleIntegrationProgram {
 
     constructor(connection: Connection, programId?: ProgramId) {
         this._programId = programId ?? testnet();
-        this.program = new Program(IDL, new PublicKey(this._programId), {
-            connection,
-        });
+        this.program = new Program(
+            { ...(IDL as any), address: this._programId },
+            {
+                connection,
+            },
+        );
     }
 
     get ID(): PublicKey {
@@ -221,6 +222,7 @@ export class CircleIntegrationProgram {
                 upgradeAuthority: this.upgradeAuthorityAddress(),
                 programData: this.programDataAddress(),
                 bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_ID,
+                systemProgram: SystemProgram.programId,
             })
             .instruction();
     }
@@ -255,6 +257,7 @@ export class CircleIntegrationProgram {
                 consumedVaa: this.consumedVaaAddress(vaaAcct.digest()),
                 registeredEmitter,
                 remoteTokenMessenger,
+                systemProgram: SystemProgram.programId,
             })
             .instruction();
     }
@@ -284,6 +287,7 @@ export class CircleIntegrationProgram {
                 rent: SYSVAR_RENT_PUBKEY,
                 clock: SYSVAR_CLOCK_PUBKEY,
                 bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_ID,
+                systemProgram: SystemProgram.programId,
             })
             .instruction();
     }
@@ -395,6 +399,10 @@ export class CircleIntegrationProgram {
                 coreBridgeProgram,
                 tokenMessengerMinterProgram,
                 messageTransmitterProgram,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: splToken.TOKEN_PROGRAM_ID,
+                rent: SYSVAR_RENT_PUBKEY,
+                clock: SYSVAR_CLOCK_PUBKEY,
             })
             .instruction();
     }
@@ -510,6 +518,8 @@ export class CircleIntegrationProgram {
                 tokenMessengerMinterEventAuthority,
                 tokenMessengerMinterProgram,
                 messageTransmitterProgram,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: splToken.TOKEN_PROGRAM_ID,
             })
             .instruction();
     }

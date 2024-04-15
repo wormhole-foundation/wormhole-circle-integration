@@ -15,12 +15,16 @@ crate-type = ["cdylib", "lib"]
 default = ["cpi"]
 client = []
 cpi = ["dep:anchor-spl", "dep:solana-program"]
-mainnet = ["wormhole-solana-vaas/mainnet"]
-testnet = ["wormhole-solana-vaas/testnet"]
+mainnet = ["wormhole-solana-consts/mainnet", "wormhole-solana-vaas/mainnet"]
+testnet = ["wormhole-solana-consts/testnet", "wormhole-solana-vaas/testnet"]
+localnet = ["wormhole-solana-consts/localnet", "wormhole-solana-vaas/localnet"]
+idl-build = ["mainnet", "anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 wormhole-io.workspace = true
 wormhole-raw-vaas.workspace = true
+wormhole-solana-consts.workspace = true
+wormhole-solana-utils.workspace = true
 wormhole-solana-vaas.workspace = true
 
 anchor-lang.workspace = true
@@ -29,8 +33,6 @@ solana-program = { optional = true, workspace = true }
 
 hex.workspace = true
 ruint.workspace = true
-
-cfg-if.workspace = true
 
 [dev-dependencies]
 hex-literal.workspace = true

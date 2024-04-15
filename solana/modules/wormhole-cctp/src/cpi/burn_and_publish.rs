@@ -1,4 +1,4 @@
-use crate::{cctp, messages::Deposit, wormhole::core_bridge_program};
+use crate::{cctp, error::WormholeCctpError, messages::Deposit, wormhole::core_bridge_program};
 use anchor_lang::prelude::*;
 use wormhole_io::TypePrefixedPayload;
 
@@ -66,9 +66,9 @@ pub fn burn_and_publish<'info>(
             .accounts
             .message_transmitter_config
             .try_borrow_data()?;
-        let config = crate::utils::ExternalAccount::<
-            cctp::message_transmitter_program::MessageTransmitterConfig,
-        >::try_deserialize_unchecked(&mut data)?;
+        let config = cctp::message_transmitter_program::MessageTransmitterConfig::try_deserialize(
+            &mut data,
+        )?;
 
         // Publish message via Core Bridge. This includes paying the message fee.
         core_bridge_program::cpi::post_message(
@@ -85,9 +85,11 @@ pub fn burn_and_publish<'info>(
                         .unwrap_or(cctp_ctx.accounts.burn_token.key())
                         .to_bytes(),
                     mint_recipient,
-                    payload,
+                    payload: payload
+                        .try_into()
+                        .map_err(|_| WormholeCctpError::DepositMessageTooLarge)?,
                 }
-                .to_vec_payload(),
+                .to_vec(),
                 commitment: core_bridge_program::Commitment::Finalized,
             },
         )?;
