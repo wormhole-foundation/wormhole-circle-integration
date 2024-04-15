@@ -1,9 +1,7 @@
-use crate::{
-    cctp::message_transmitter_program, error::WormholeCctpError, utils::CctpMessage,
-    wormhole::core_bridge_program::vaa::VaaAccount,
-};
+use crate::{cctp::message_transmitter_program, error::WormholeCctpError, utils::CctpMessage};
 use anchor_lang::prelude::*;
 use wormhole_raw_vaas::cctp::WormholeCctpMessage;
+use wormhole_solana_vaas::zero_copy::VaaAccount;
 
 /// Method to reconcile a CCTP message with a Wormhole VAA encoding the Wormhole CCTP deposit. After
 /// reconciliation, the method invokes the CCTP Message Transmitter to mint the local tokens to the
@@ -26,7 +24,7 @@ pub fn verify_vaa_and_mint_unchecked<'info>(
     >,
     args: message_transmitter_program::cpi::ReceiveMessageArgs,
 ) -> Result<()> {
-    let msg = WormholeCctpMessage::try_from(vaa.try_payload()?)
+    let msg = WormholeCctpMessage::try_from(vaa.payload())
         .map_err(|_| error!(WormholeCctpError::CannotParseMessage))?;
 
     // This should always succeed. But we keep this check just in case we add more message types

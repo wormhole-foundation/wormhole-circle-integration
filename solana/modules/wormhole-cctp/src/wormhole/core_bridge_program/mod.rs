@@ -3,9 +3,6 @@ pub mod cpi;
 
 pub mod state;
 
-pub mod vaa;
-pub use vaa::VaaAccount;
-
 use anchor_lang::prelude::*;
 
 pub const SOLANA_CHAIN: u16 = 1;

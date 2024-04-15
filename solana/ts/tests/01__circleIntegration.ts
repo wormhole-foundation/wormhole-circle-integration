@@ -592,7 +592,7 @@ describe("Circle Integration -- Localnet", () => {
                 connection,
                 [computeIx, ix],
                 [payer, mintRecipientAuthority],
-                "Error Code: AccountDidNotDeserialize",
+                "Error Code: ConstraintOwner",
                 {
                     addressLookupTableAccounts: [lookupTableAccount],
                 },

@@ -8,7 +8,7 @@ use wormhole_cctp_solana::{
     cctp::{message_transmitter_program, token_messenger_minter_program},
     cpi::ReceiveMessageArgs,
     utils::ExternalAccount,
-    wormhole::core_bridge_program::VaaAccount,
+    wormhole::VaaAccount,
 };
 
 /// Account context to invoke [redeem_tokens_with_payload].
@@ -48,7 +48,7 @@ pub struct RedeemTokensWithPayload<'info> {
         space = 8 + ConsumedVaa::INIT_SPACE,
         seeds = [
             ConsumedVaa::SEED_PREFIX,
-            VaaAccount::load(&vaa)?.try_digest()?.as_ref(),
+            VaaAccount::load(&vaa)?.digest().as_ref(),
         ],
         bump,
     )]
@@ -217,7 +217,7 @@ pub fn redeem_tokens_with_payload(
 
     // Validate that this message originated from a registered emitter.
     let registered_emitter = &ctx.accounts.registered_emitter;
-    let emitter = vaa.try_emitter_info().unwrap();
+    let emitter = vaa.emitter_info();
     require!(
         emitter.chain == registered_emitter.chain && emitter.address == registered_emitter.address,
         CircleIntegrationError::UnknownEmitter

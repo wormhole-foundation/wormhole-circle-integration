@@ -5,7 +5,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use solana_program::bpf_loader_upgradeable;
-use wormhole_cctp_solana::wormhole::core_bridge_program::{self, VaaAccount};
+use wormhole_cctp_solana::wormhole::{core_bridge_program, VaaAccount};
 
 #[derive(Accounts)]
 pub struct UpgradeContract<'info> {
@@ -30,7 +30,7 @@ pub struct UpgradeContract<'info> {
         space = 8 + ConsumedVaa::INIT_SPACE,
         seeds = [
             ConsumedVaa::SEED_PREFIX,
-            VaaAccount::load(&vaa)?.try_digest()?.as_ref(),
+            VaaAccount::load(&vaa)?.digest().as_ref(),
         ],
         bump,
     )]
@@ -112,7 +112,7 @@ pub fn upgrade_contract(ctx: Context<UpgradeContract>) -> Result<()> {
 
 fn handle_access_control(ctx: &Context<UpgradeContract>) -> Result<()> {
     msg!("okay... {:?}", ctx.accounts.vaa.key());
-    let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa)?;
+    let vaa = VaaAccount::load(&ctx.accounts.vaa)?;
     msg!("and...");
     let gov_payload = crate::processor::require_valid_governance_vaa(&vaa)?;
 

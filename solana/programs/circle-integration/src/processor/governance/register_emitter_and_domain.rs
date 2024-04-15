@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 use wormhole_cctp_solana::{
     cctp::token_messenger_minter_program,
     utils::ExternalAccount,
-    wormhole::core_bridge_program::{self, VaaAccount},
+    wormhole::{core_bridge_program, VaaAccount},
 };
 use wormhole_raw_vaas::cctp::CircleIntegrationGovPayload;
 
@@ -43,7 +43,7 @@ pub struct RegisterEmitterAndDomain<'info> {
         space = 8 + ConsumedVaa::INIT_SPACE,
         seeds = [
             ConsumedVaa::SEED_PREFIX,
-            VaaAccount::load(&vaa)?.try_digest()?.as_ref(),
+            VaaAccount::load(&vaa)?.digest().as_ref(),
         ],
         bump,
     )]
@@ -69,9 +69,9 @@ pub fn register_emitter_and_domain(ctx: Context<RegisterEmitterAndDomain>) -> Re
         bump: ctx.bumps.consumed_vaa,
     });
 
-    let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa).unwrap();
+    let vaa = VaaAccount::load(&ctx.accounts.vaa).unwrap();
 
-    let registration = CircleIntegrationGovPayload::try_from(vaa.try_payload().unwrap())
+    let registration = CircleIntegrationGovPayload::try_from(vaa.payload())
         .unwrap()
         .decree()
         .to_register_emitter_and_domain_unchecked();
@@ -94,8 +94,8 @@ where
     T: std::fmt::Debug,
     F: FnOnce(&wormhole_raw_vaas::cctp::RegisterEmitterAndDomain) -> T,
 {
-    let vaa = core_bridge_program::VaaAccount::load(vaa_acc_info)?;
-    let payload = vaa.try_payload()?;
+    let vaa = VaaAccount::load(vaa_acc_info)?;
+    let payload = vaa.payload();
 
     let gov_payload = CircleIntegrationGovPayload::parse(payload.as_ref())
         .map_err(|_| error!(CircleIntegrationError::InvalidGovernanceVaa))?;
@@ -107,7 +107,7 @@ where
 }
 
 fn handle_access_control(ctx: &Context<RegisterEmitterAndDomain>) -> Result<()> {
-    let vaa = core_bridge_program::VaaAccount::load(&ctx.accounts.vaa)?;
+    let vaa = VaaAccount::load(&ctx.accounts.vaa)?;
     let gov_payload = crate::processor::require_valid_governance_vaa(&vaa)?;
 
     let registration = gov_payload

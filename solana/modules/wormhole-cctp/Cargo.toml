@@ -15,12 +15,13 @@ crate-type = ["cdylib", "lib"]
 default = ["cpi"]
 client = []
 cpi = ["dep:anchor-spl", "dep:solana-program"]
-mainnet = []
-testnet = []
+mainnet = ["wormhole-solana-vaas/mainnet"]
+testnet = ["wormhole-solana-vaas/testnet"]
 
 [dependencies]
 wormhole-io.workspace = true
 wormhole-raw-vaas.workspace = true
+wormhole-solana-vaas.workspace = true
 
 anchor-lang.workspace = true
 anchor-spl = { optional = true, workspace = true }
