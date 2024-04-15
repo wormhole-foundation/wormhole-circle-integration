@@ -2541,7 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "wormhole-cctp-solana"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.8"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -2557,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "wormhole-circle-integration-solana"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.8"
 dependencies = [
  "anchor-lang",
  "anchor-spl",

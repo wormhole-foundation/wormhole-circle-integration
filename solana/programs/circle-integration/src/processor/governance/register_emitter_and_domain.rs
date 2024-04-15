@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 use wormhole_cctp_solana::{
     cctp::token_messenger_minter_program,
     utils::ExternalAccount,
-    wormhole::{core_bridge_program, VaaAccount},
+    wormhole::{VaaAccount, SOLANA_CHAIN},
 };
 use wormhole_raw_vaas::cctp::CircleIntegrationGovPayload;
 
@@ -22,7 +22,6 @@ pub struct RegisterEmitterAndDomain<'info> {
     custodian: Account<'info, Custodian>,
 
     /// CHECK: We will be performing zero-copy deserialization in the instruction handler.
-    #[account(owner = core_bridge_program::id())]
     vaa: AccountInfo<'info>,
 
     #[account(
@@ -117,14 +116,14 @@ fn handle_access_control(ctx: &Context<RegisterEmitterAndDomain>) -> Result<()> 
     // Registration is either for this chain (Solana) or for all chains (encoded as zero).
     let decree_chain = registration.chain();
     require!(
-        decree_chain == 0 || decree_chain == core_bridge_program::SOLANA_CHAIN,
+        decree_chain == 0 || decree_chain == SOLANA_CHAIN,
         CircleIntegrationError::GovernanceForAnotherChain
     );
 
     // Foreign chain and emitter address cannot be zero or Solana's.
     let foreign_chain = registration.foreign_chain();
     require!(
-        foreign_chain != 0 && foreign_chain != core_bridge_program::SOLANA_CHAIN,
+        foreign_chain != 0 && foreign_chain != SOLANA_CHAIN,
         CircleIntegrationError::InvalidForeignChain
     );
     require!(

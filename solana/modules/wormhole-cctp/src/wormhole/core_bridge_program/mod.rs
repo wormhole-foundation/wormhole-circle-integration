@@ -5,8 +5,6 @@ pub mod state;
 
 use anchor_lang::prelude::*;
 
-pub const SOLANA_CHAIN: u16 = 1;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "localnet")] {
         declare_id!("Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o");

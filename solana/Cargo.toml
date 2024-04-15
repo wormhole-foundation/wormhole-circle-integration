@@ -7,7 +7,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.8"
 authors = ["Wormhole Contributors"]
 license = "Apache-2.0"
 homepage = "https://wormhole.com"

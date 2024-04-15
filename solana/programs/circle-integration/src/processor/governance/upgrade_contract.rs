@@ -5,7 +5,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use solana_program::bpf_loader_upgradeable;
-use wormhole_cctp_solana::wormhole::{core_bridge_program, VaaAccount};
+use wormhole_cctp_solana::wormhole::{VaaAccount, SOLANA_CHAIN};
 
 #[derive(Accounts)]
 pub struct UpgradeContract<'info> {
@@ -21,7 +21,6 @@ pub struct UpgradeContract<'info> {
     /// CHECK: Posted VAA account, which will be read via zero-copy deserialization in the
     /// instruction handler, which also checks this account discriminator (so there is no need to
     /// check PDA seeds here).
-    #[account(owner = core_bridge_program::id())]
     vaa: AccountInfo<'info>,
 
     #[account(
@@ -123,7 +122,7 @@ fn handle_access_control(ctx: &Context<UpgradeContract>) -> Result<()> {
     // Make sure that the contract upgrade is intended for this network.
     require_eq!(
         upgrade.chain(),
-        core_bridge_program::SOLANA_CHAIN,
+        SOLANA_CHAIN,
         CircleIntegrationError::GovernanceForAnotherChain
     );
 
