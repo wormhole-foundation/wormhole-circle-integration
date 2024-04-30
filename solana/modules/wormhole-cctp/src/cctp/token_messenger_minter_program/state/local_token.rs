@@ -17,12 +17,8 @@ impl LocalToken {
     pub const SEED_PREFIX: &'static [u8] = b"local_token";
 }
 
-impl anchor_lang::Discriminator for LocalToken {
-    const DISCRIMINATOR: [u8; 8] = [159, 131, 58, 170, 193, 84, 128, 182];
-}
-
-impl Owner for LocalToken {
-    fn owner() -> Pubkey {
-        crate::cctp::token_messenger_minter_program::ID
-    }
-}
+wormhole_solana_utils::impl_anchor_account_readonly!(
+    LocalToken,
+    crate::cctp::TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+    [159, 131, 58, 170, 193, 84, 128, 182]
+);

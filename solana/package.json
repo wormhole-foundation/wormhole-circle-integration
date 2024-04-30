@@ -14,11 +14,12 @@
   "homepage": "https://github.com/wormhole-foundation/wormhole-circle-integration#readme",
   "devDependencies": {
     "@certusone/wormhole-sdk": "^0.10.10",
-    "@coral-xyz/anchor": "^0.29.0",
+    "@coral-xyz/anchor": "^0.30.0",
     "@solana/spl-token": "^0.3.8",
     "@solana/web3.js": "^1.87.3",
     "@types/chai": "^4.3.9",
     "@types/mocha": "^10.0.3",
+    "anchor-0.29.0": "npm:@coral-xyz/anchor@^0.29.0",
     "chai": "^4.3.10",
     "dotenv": "^16.3.1",
     "ethers": "^5.7.2",

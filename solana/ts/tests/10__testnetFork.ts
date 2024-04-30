@@ -1,7 +1,7 @@
 import { MockEmitter, MockGuardians } from "@certusone/wormhole-sdk/lib/cjs/mock";
-import * as anchor from "@coral-xyz/anchor";
+import { Connection, Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { expect } from "chai";
-import { CircleIntegrationProgram } from "../src";
+import { BPF_LOADER_UPGRADEABLE_ID, CircleIntegrationProgram } from "../src";
 import {
     GUARDIAN_KEY,
     PAYER_PRIVATE_KEY,
@@ -11,16 +11,14 @@ import {
     postGovVaa,
 } from "./helpers";
 
-const WORMHOLE_CORE_BRIDGE_ADDRESS = new anchor.web3.PublicKey(
-    "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
-);
+const WORMHOLE_CORE_BRIDGE_ADDRESS = new PublicKey("3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5");
 const ARTIFACTS_PATH = `${__dirname}/artifacts/testnet_wormhole_circle_integration_solana.so`;
 
 const guardians = new MockGuardians(0, [GUARDIAN_KEY]);
 
 describe("Circle Integration -- Testnet Fork", () => {
-    const connection = new anchor.web3.Connection("http://localhost:8899", "processed");
-    const payer = anchor.web3.Keypair.fromSecretKey(PAYER_PRIVATE_KEY);
+    const connection = new Connection("http://localhost:8899", "processed");
+    const payer = Keypair.fromSecretKey(PAYER_PRIVATE_KEY);
 
     const circleIntegration = new CircleIntegrationProgram(
         connection,
@@ -40,7 +38,7 @@ describe("Circle Integration -- Testnet Fork", () => {
         });
 
         it("Invoke `upgrade_contract` on Forked Circle Integration", async () => {
-            const implementation = localVariables.get("implementation") as anchor.web3.PublicKey;
+            const implementation = localVariables.get("implementation") as PublicKey;
             expect(localVariables.delete("implementation")).is.true;
 
             const vaa = await postGovVaa(
@@ -101,7 +99,7 @@ describe("Circle Integration -- Testnet Fork", () => {
         });
 
         it("Cannot Invoke `upgrade_contract` with Same VAA", async () => {
-            const vaa = localVariables.get("vaa") as anchor.web3.PublicKey;
+            const vaa = localVariables.get("vaa") as PublicKey;
             expect(localVariables.delete("vaa")).is.true;
 
             const ix = await circleIntegration.upgradeContractIx({
@@ -260,3 +258,40 @@ describe("Circle Integration -- Testnet Fork", () => {
         });
     });
 });
+
+function setUpgradeAuthorityIx(accounts: {
+    programId: PublicKey;
+    currentAuthority: PublicKey;
+    newAuthority: PublicKey;
+}) {
+    const { programId, currentAuthority, newAuthority } = accounts;
+    return setBufferAuthorityIx({
+        buffer: PublicKey.findProgramAddressSync(
+            [programId.toBuffer()],
+            BPF_LOADER_UPGRADEABLE_ID,
+        )[0],
+        currentAuthority,
+        newAuthority,
+    });
+}
+
+function setBufferAuthorityIx(accounts: {
+    buffer: PublicKey;
+    currentAuthority: PublicKey;
+    newAuthority: PublicKey;
+}) {
+    const { buffer, currentAuthority, newAuthority } = accounts;
+    return new TransactionInstruction({
+        programId: BPF_LOADER_UPGRADEABLE_ID,
+        keys: [
+            {
+                pubkey: buffer,
+                isWritable: true,
+                isSigner: false,
+            },
+            { pubkey: currentAuthority, isSigner: true, isWritable: false },
+            { pubkey: newAuthority, isSigner: false, isWritable: false },
+        ],
+        data: Buffer.from([4, 0, 0, 0]),
+    });
+}

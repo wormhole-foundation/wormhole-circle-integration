@@ -92,7 +92,7 @@ pub fn deposit_for_burn_with_caller<'info>(
 
     solana_program::program::invoke_signed(
         &solana_program::instruction::Instruction {
-            program_id: crate::cctp::token_messenger_minter_program::ID,
+            program_id: crate::cctp::TOKEN_MESSENGER_MINTER_PROGRAM_ID,
             accounts: ctx.to_account_metas(None),
             data: (ANCHOR_IX_SELECTOR, args).try_to_vec()?,
         },

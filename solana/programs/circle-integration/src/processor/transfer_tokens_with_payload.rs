@@ -1,11 +1,7 @@
 use crate::state::{Custodian, RegisteredEmitter};
 use anchor_lang::prelude::*;
-use anchor_spl::token;
-use wormhole_cctp_solana::{
-    cctp::{message_transmitter_program, token_messenger_minter_program},
-    utils::ExternalAccount,
-    wormhole::core_bridge_program,
-};
+use anchor_spl::token::{self, Token};
+use wormhole_cctp_solana::cctp::{message_transmitter_program, token_messenger_minter_program};
 
 /// Account context to invoke [transfer_tokens_with_payload].
 #[derive(Accounts)]
@@ -112,16 +108,24 @@ pub struct TransferTokensWithPayload<'info> {
     ///
     /// Mutable. Seeds must be \["local_token", mint\] (CCTP Token Messenger Minter program).
     #[account(mut)]
-    local_token: Box<Account<'info, ExternalAccount<token_messenger_minter_program::LocalToken>>>,
+    local_token: Box<Account<'info, token_messenger_minter_program::LocalToken>>,
 
     /// CHECK: Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter program).
     token_messenger_minter_event_authority: UncheckedAccount<'info>,
 
-    core_bridge_program: Program<'info, core_bridge_program::CoreBridge>,
-    token_messenger_minter_program:
-        Program<'info, token_messenger_minter_program::TokenMessengerMinter>,
-    message_transmitter_program: Program<'info, message_transmitter_program::MessageTransmitter>,
-    token_program: Program<'info, token::Token>,
+    /// CHECK: Must equal Wormhole Core Bridge program ID.
+    #[account(address = wormhole_cctp_solana::wormhole::core_bridge_program::id())]
+    core_bridge_program: UncheckedAccount<'info>,
+
+    /// CHECK: Must equal CCTP Token Messenger Minter program ID.
+    #[account(address = token_messenger_minter_program::id())]
+    token_messenger_minter_program: UncheckedAccount<'info>,
+
+    /// CHECK: Must equal CCTP Message Transmitter program ID.
+    #[account(address = message_transmitter_program::id())]
+    message_transmitter_program: UncheckedAccount<'info>,
+
+    token_program: Program<'info, Token>,
     system_program: Program<'info, System>,
 
     /// CHECK: Wormhole Core Bridge needs the clock sysvar based on its legacy implementation.

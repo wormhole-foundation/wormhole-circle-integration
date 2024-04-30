@@ -15,12 +15,8 @@ pub struct MessageTransmitterConfig {
     pub next_available_nonce: u64,
 }
 
-impl anchor_lang::Discriminator for MessageTransmitterConfig {
-    const DISCRIMINATOR: [u8; 8] = [71, 40, 180, 142, 19, 203, 35, 252];
-}
-
-impl Owner for MessageTransmitterConfig {
-    fn owner() -> Pubkey {
-        crate::cctp::message_transmitter_program::ID
-    }
-}
+wormhole_solana_utils::impl_anchor_account_readonly!(
+    MessageTransmitterConfig,
+    crate::cctp::message_transmitter_program::ID,
+    [71, 40, 180, 142, 19, 203, 35, 252]
+);

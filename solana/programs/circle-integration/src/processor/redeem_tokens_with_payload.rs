@@ -7,7 +7,6 @@ use anchor_spl::token;
 use wormhole_cctp_solana::{
     cctp::{message_transmitter_program, token_messenger_minter_program},
     cpi::ReceiveMessageArgs,
-    utils::ExternalAccount,
     wormhole::VaaAccount,
 };
 
@@ -120,7 +119,7 @@ pub struct RedeemTokensWithPayload<'info> {
         bump = local_token.bump,
         seeds::program = token_messenger_minter_program,
     )]
-    local_token: Account<'info, ExternalAccount<token_messenger_minter_program::LocalToken>>,
+    local_token: Account<'info, token_messenger_minter_program::LocalToken>,
 
     /// CHECK: Seeds must be \["token_pair", remote_domain.to_string(), remote_token_address\] (CCTP
     /// Token Messenger Minter program).
@@ -133,9 +132,14 @@ pub struct RedeemTokensWithPayload<'info> {
     /// CHECK: Seeds must be \["__event_authority"\] (CCTP Token Messenger Minter program).
     token_messenger_minter_event_authority: UncheckedAccount<'info>,
 
-    token_messenger_minter_program:
-        Program<'info, token_messenger_minter_program::TokenMessengerMinter>,
-    message_transmitter_program: Program<'info, message_transmitter_program::MessageTransmitter>,
+    /// CHECK: Must equal CCTP Token Messenger Minter program ID.
+    #[account(address = token_messenger_minter_program::id())]
+    token_messenger_minter_program: UncheckedAccount<'info>,
+
+    /// CHECK: Must equal CCTP Message Transmitter program ID.
+    #[account(address = message_transmitter_program::id())]
+    message_transmitter_program: UncheckedAccount<'info>,
+
     token_program: Program<'info, token::Token>,
     system_program: Program<'info, System>,
 }

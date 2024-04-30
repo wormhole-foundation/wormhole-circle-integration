@@ -5,7 +5,6 @@ use crate::{
 use anchor_lang::prelude::*;
 use wormhole_cctp_solana::{
     cctp::token_messenger_minter_program,
-    utils::ExternalAccount,
     wormhole::{VaaAccount, SOLANA_CHAIN},
 };
 use wormhole_raw_vaas::cctp::CircleIntegrationGovPayload;
@@ -22,7 +21,7 @@ pub struct RegisterEmitterAndDomain<'info> {
     custodian: Account<'info, Custodian>,
 
     /// CHECK: We will be performing zero-copy deserialization in the instruction handler.
-    vaa: AccountInfo<'info>,
+    vaa: UncheckedAccount<'info>,
 
     #[account(
         init,
@@ -56,8 +55,7 @@ pub struct RegisterEmitterAndDomain<'info> {
         bump,
         seeds::program = token_messenger_minter_program::id(),
     )]
-    remote_token_messenger:
-        Account<'info, ExternalAccount<token_messenger_minter_program::RemoteTokenMessenger>>,
+    remote_token_messenger: Account<'info, token_messenger_minter_program::RemoteTokenMessenger>,
 
     system_program: Program<'info, System>,
 }

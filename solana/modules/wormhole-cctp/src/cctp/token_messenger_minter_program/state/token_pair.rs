@@ -12,12 +12,8 @@ impl TokenPair {
     pub const SEED_PREFIX: &'static [u8] = b"token_pair";
 }
 
-impl anchor_lang::Discriminator for TokenPair {
-    const DISCRIMINATOR: [u8; 8] = [17, 214, 45, 176, 229, 149, 197, 71];
-}
-
-impl Owner for TokenPair {
-    fn owner() -> Pubkey {
-        crate::cctp::token_messenger_minter_program::ID
-    }
-}
+wormhole_solana_utils::impl_anchor_account_readonly!(
+    TokenPair,
+    crate::cctp::TOKEN_MESSENGER_MINTER_PROGRAM_ID,
+    [17, 214, 45, 176, 229, 149, 197, 71]
+);

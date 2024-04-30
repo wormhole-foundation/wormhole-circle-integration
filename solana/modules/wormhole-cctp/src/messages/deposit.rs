@@ -4,7 +4,7 @@
 use std::io;
 
 use ruint::aliases::U256;
-use wormhole_io::{Readable, TypePrefixedPayload, Writeable};
+use wormhole_io::{Readable, TypePrefixedPayload, Writeable, WriteableBytes};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Deposit {
@@ -15,52 +15,45 @@ pub struct Deposit {
     pub cctp_nonce: u64,
     pub burn_source: [u8; 32],
     pub mint_recipient: [u8; 32],
-    /// NOTE: This payload length is encoded as u16.
-    pub payload: Vec<u8>,
+    pub payload: WriteableBytes<u16>,
 }
 
-impl TypePrefixedPayload for Deposit {
-    const TYPE: Option<u8> = Some(1);
+impl TypePrefixedPayload<1> for Deposit {
+    const TYPE: Option<[u8; 1]> = Some([1]);
+
+    fn written_size(&self) -> usize {
+        32 // token_address
+        + 32 // amount
+        + 4 // source_cctp_domain
+        + 4 // destination_cctp_domain
+        + 8 // cctp_nonce
+        + 32 // burn_source
+        + 32 // mint_recipient
+        + 2 // payload len
+        + self.payload.len()
+    }
 }
 
 impl Readable for Deposit {
-    const SIZE: Option<usize> = None;
-
     fn read<R>(reader: &mut R) -> io::Result<Self>
     where
         Self: Sized,
         R: io::Read,
     {
-        let token_address = Readable::read(reader)?;
-        let amount = <[u8; 32]>::read(reader).map(U256::from_be_bytes)?;
-        let source_cctp_domain = Readable::read(reader)?;
-        let destination_cctp_domain = Readable::read(reader)?;
-        let cctp_nonce = Readable::read(reader)?;
-        let burn_source = Readable::read(reader)?;
-        let mint_recipient = Readable::read(reader)?;
-
-        let payload_len = u16::read(reader).map(usize::from)?;
-        let mut payload = vec![0u8; payload_len];
-        reader.read_exact(&mut payload)?;
-
         Ok(Self {
-            token_address,
-            amount,
-            source_cctp_domain,
-            destination_cctp_domain,
-            cctp_nonce,
-            burn_source,
-            mint_recipient,
-            payload,
+            token_address: Readable::read(reader)?,
+            amount: <[u8; 32]>::read(reader).map(U256::from_be_bytes)?,
+            source_cctp_domain: Readable::read(reader)?,
+            destination_cctp_domain: Readable::read(reader)?,
+            cctp_nonce: Readable::read(reader)?,
+            burn_source: Readable::read(reader)?,
+            mint_recipient: Readable::read(reader)?,
+            payload: Readable::read(reader)?,
         })
     }
 }
 
 impl Writeable for Deposit {
-    fn written_size(&self) -> usize {
-        32 + 32 + 4 + 4 + 8 + 32 + 32 + 2 + self.payload.len()
-    }
-
     fn write<W>(&self, writer: &mut W) -> std::io::Result<()>
     where
         Self: Sized,
@@ -73,10 +66,7 @@ impl Writeable for Deposit {
         self.cctp_nonce.write(writer)?;
         self.burn_source.write(writer)?;
         self.mint_recipient.write(writer)?;
-        u16::try_from(self.payload.len())
-            .map_err(|_| std::io::ErrorKind::InvalidData.into())
-            .and_then(|len| len.write(writer))?;
-        writer.write_all(&self.payload)?;
+        self.payload.write(writer)?;
         Ok(())
     }
 }
@@ -94,16 +84,18 @@ mod test {
         pub are: u16,
         pub belong: u32,
         pub to: u64,
-        pub us: WriteableBytes,
+        pub us: WriteableBytes<u32>,
     }
 
-    impl TypePrefixedPayload for AllYourBase {
-        const TYPE: Option<u8> = Some(69);
+    impl TypePrefixedPayload<2> for AllYourBase {
+        const TYPE: Option<[u8; 2]> = Some([69, 69]);
+
+        fn written_size(&self) -> usize {
+            2 + 4 + 8 + 4 + self.us.len()
+        }
     }
 
     impl Readable for AllYourBase {
-        const SIZE: Option<usize> = None;
-
         fn read<R>(reader: &mut R) -> io::Result<Self>
         where
             Self: Sized,
@@ -119,10 +111,6 @@ mod test {
     }
 
     impl Writeable for AllYourBase {
-        fn written_size(&self) -> usize {
-            2 + 4 + 8 + self.us.written_size()
-        }
-
         fn write<W>(&self, writer: &mut W) -> std::io::Result<()>
         where
             Self: Sized,
@@ -142,7 +130,7 @@ mod test {
             are: 42,
             belong: 1337,
             to: 9001,
-            us: b"Beep boop".to_vec().into(),
+            us: b"Beep boop".to_vec().try_into().unwrap(),
         };
 
         let deposit = Deposit {
@@ -155,10 +143,10 @@ mod test {
             mint_recipient: hex!(
                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
             ),
-            payload: payload.to_vec_payload(),
+            payload: payload.to_vec().try_into().unwrap(),
         };
 
-        let encoded = deposit.to_vec_payload();
+        let encoded = deposit.to_vec();
 
         let msg = cctp::WormholeCctpMessage::parse(&encoded).unwrap();
         let parsed = msg.deposit().unwrap();
@@ -171,7 +159,7 @@ mod test {
             cctp_nonce: parsed.cctp_nonce(),
             burn_source: parsed.burn_source(),
             mint_recipient: parsed.mint_recipient(),
-            payload: payload.to_vec_payload(),
+            payload: payload.to_vec().try_into().unwrap(),
         };
         assert_eq!(deposit, expected);
 

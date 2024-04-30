@@ -1,6 +1,3 @@
-SOLANA_CLI="v1.16.16"
-ANCHOR_CLI="v0.28.0"
-
 out_mainnet=artifacts-mainnet
 out_testnet=artifacts-testnet
 
@@ -12,31 +9,32 @@ check:
 	cargo check --all-features
 
 clean:
+	cargo clean
 	anchor clean
 	rm -rf node_modules artifacts-mainnet artifacts-testnet ts/tests/artifacts
 
 node_modules:
 	npm ci
 
-prune_idl: node_modules ts/scripts/pruneIdlTypes.ts
-	cd ts/scripts && npx ts-node pruneIdlTypes.ts
-
 build: $(out_$(NETWORK))
 $(out_$(NETWORK)):
 ifdef out_$(NETWORK)
-	anchor build -p wormhole_circle_integration_solana --arch sbf -- --features "$(NETWORK),no-idl" -- --no-default-features
+	anchor build --no-idl -- --features $(NETWORK)
 	mkdir -p $(out_$(NETWORK))
 	cp target/deploy/*.so $(out_$(NETWORK))/
 endif
 
-test: node_modules
-	cargo test --all-features
-	anchor build -p wormhole_circle_integration_solana --arch sbf -- --features testnet -- --no-default-features
-	mkdir -p ts/tests/artifacts && cp target/deploy/wormhole_circle_integration_solana.so ts/tests/artifacts/testnet_wormhole_circle_integration_solana.so
+test: node_modules ts/tests/artifacts
+	anchor build --no-idl -- --features testnet
+	cp target/deploy/wormhole_circle_integration_solana.so ts/tests/artifacts/testnet_wormhole_circle_integration_solana.so
 	solana program dump -u m worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth ts/tests/artifacts/mainnet_core_bridge.so
-	anchor build --arch sbf -- --features integration-test -- --no-default-features
-	$(MAKE) prune_idl
-	anchor test --skip-build
+	bash sh/run_anchor_test.sh
+
+ts/tests/artifacts:
+	mkdir -p ts/tests/artifacts
+
+cargo-test:
+	cargo clean && cargo test --all-features
 
 lint:
 	cargo fmt --check
