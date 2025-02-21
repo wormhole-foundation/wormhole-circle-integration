@@ -86,7 +86,7 @@ contract ContractScript is Script {
         );
     }
 
-    function generateRegistrationVaa() internal returns (bytes memory vaa) {
+    function generateRegistrationVaa() internal view returns (bytes memory vaa) {
         IWormhole.VM memory message = makeRegistrationObservation(
             abi.encodePacked(
                 uint16(vm.envUint("FOREIGN_CHAIN")),
